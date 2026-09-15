@@ -103,6 +103,114 @@
     if (e.key === LS_LOG && Store.onLogChange) Store.onLogChange();
   });
 
+  /* ---------------- 음성 엔진 (클로바 중계 서버) ---------------- */
+  // 비밀 열쇠는 중계 서버에만 있다. 이 파일이 하는 일은 «문구를 보내고 소리를 받아오는» 것뿐이다.
+  // 중계 서버 주소가 없거나 서버가 응답하지 않으면 이 기기에 설치된 기본 목소리로 내려간다.
+  var Engine = {
+    base: '',
+    mode: 'device',            // 'clova' | 'device'
+    speakers: [],
+    note: '샘플 음성(임시) — 이 기기에 설치된 목소리로 읽습니다.',
+    lastError: '',
+    probed: false,
+    onChange: null,
+
+    init: function () {
+      var cfg = global.NB_CONFIG || {};
+      var base = cfg.proxyBase || '';
+      if (cfg.allowQueryOverride !== false) {
+        try {
+          var q = new URLSearchParams(location.search).get('voice');
+          if (q) base = q;
+        } catch (e) { }
+      }
+      this.base = String(base || '').replace(/\/+$/, '');
+      return this.base;
+    },
+
+    setMode: function (mode, note) {
+      var changed = this.mode !== mode || this.note !== note;
+      this.mode = mode; this.note = note;
+      if (changed && this.onChange) { try { this.onChange(this); } catch (e) { } }
+    },
+
+    // 중계 서버가 살아 있는지, 열쇠가 꽂혀 있는지 한 번 물어본다
+    probe: function () {
+      var self = this;
+      if (this.probed) return Promise.resolve(this);
+      this.init();
+      this.probed = true;
+      if (!this.base) {
+        this.setMode('device', '샘플 음성(임시) — 이 기기에 설치된 목소리로 읽습니다.');
+        return Promise.resolve(this);
+      }
+      return fetchWithTimeout(this.base + '/health', { method: 'GET' }, 6000)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (j && j.configured && j.speakers && j.speakers.length) {
+            self.speakers = j.speakers;
+            self.setMode('clova', '클로바보이스 — 고품질 안내 음성');
+          } else {
+            self.setMode('device', '샘플 음성(임시) — 음성 열쇠가 아직 서버에 없어 기기 목소리로 읽습니다.');
+          }
+          return self;
+        })
+        .catch(function () {
+          self.setMode('device', '샘플 음성(임시) — 음성 서버에 연결하지 못해 기기 목소리로 읽습니다.');
+          return self;
+        });
+    },
+
+    // 사람이 쓰는 «배속»(0.6~1.6) 을 클로바 speed 눈금(-5~5)으로 바꾼다.
+    // 클로바는 숫자가 클수록 느리다 — 그래서 부호를 뒤집는다.
+    rateToSpeed: function (rate) {
+      var r = Math.max(0.6, Math.min(1.6, Number(rate) || 1));
+      var s = r >= 1 ? -((r - 1) / 0.6) * 5 : ((1 - r) / 0.4) * 5;
+      return Math.max(-5, Math.min(5, Math.round(s)));
+    },
+
+    // 문구 한 덩어리를 소리(ArrayBuffer)로 바꿔 온다
+    synth: function (text, opt) {
+      var self = this;
+      opt = opt || {};
+      var payload = {
+        text: text,
+        speaker: opt.speaker || '',
+        speed: this.rateToSpeed(opt.rate),
+        pitch: Math.max(-5, Math.min(5, Math.round(Number(opt.pitch) || 0))),
+        volume: 0,
+        format: 'mp3'
+      };
+      return fetchWithTimeout(this.base + '/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }, 25000).then(function (r) {
+        if (r.ok) return r.arrayBuffer();
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          var e = new Error(j.message || '음성을 만들지 못했습니다.');
+          e.code = j.error || 'upstream_error';
+          e.human = j.message || '음성을 만들지 못했습니다.';
+          self.lastError = e.human;
+          throw e;
+        });
+      });
+    }
+  };
+
+  function fetchWithTimeout(url, opts, ms) {
+    opts = opts || {};
+    if (!global.fetch) return Promise.reject(new Error('no-fetch'));
+    if (!global.AbortController) return global.fetch(url, opts);
+    var ac = new AbortController();
+    opts.signal = ac.signal;
+    var t = setTimeout(function () { ac.abort(); }, ms || 10000);
+    return global.fetch(url, opts).then(
+      function (r) { clearTimeout(t); return r; },
+      function (e) { clearTimeout(t); throw e; }
+    );
+  }
+
   /* ---------------- 목소리 ---------------- */
   var GENDER_MAP = {
     yuna: 'female', '유나': 'female', flo: 'female', grandma: 'female', sandy: 'female', shelley: 'female',
@@ -115,12 +223,13 @@
 
   var Voices = {
     all: [],
-    ko: [],
+    ko: [],          // 화면이 읽는 «지금 쓸 수 있는 목소리» 목록
+    deviceKo: [],    // 이 기기에 설치된 목소리 (폴백용으로 항상 들고 있는다)
     refresh: function () {
-      if (!global.speechSynthesis) return [];
+      if (!global.speechSynthesis) { this.applyEngine(); return this.ko; }
       this.all = speechSynthesis.getVoices() || [];
       var self = this;
-      this.ko = this.all.filter(function (v) { return (v.lang || '').toLowerCase().indexOf('ko') === 0; })
+      this.deviceKo = this.all.filter(function (v) { return (v.lang || '').toLowerCase().indexOf('ko') === 0; })
         .map(function (v) {
           var b = baseName(v.name);
           return {
@@ -130,6 +239,26 @@
             label: self.labelOf(v.name, GENDER_MAP[b] || 'other', AGE_MAP[b] || '')
           };
         });
+      this.applyEngine();
+      return this.ko;
+    },
+
+    // 클로바가 살아 있으면 클로바 화자 목록을, 아니면 기기 목소리를 쓴다.
+    // 목록 모양(uri/name/gender/label)이 같아서 아래 고르기·저장 로직은 그대로 돌아간다.
+    applyEngine: function () {
+      if (Engine.mode === 'clova' && Engine.speakers.length) {
+        this.ko = Engine.speakers.map(function (s) {
+          return {
+            uri: s.code, name: s.name, lang: 'ko-KR', raw: null, clova: true,
+            gender: s.gender || 'other', age: s.age || '',
+            recommended: !!s.recommended,
+            desc: s.desc || '',
+            label: (s.gender === 'female' ? '여성' : s.gender === 'male' ? '남성' : '기타') + ' — ' + s.name + (s.desc ? ' · ' + s.desc : '')
+          };
+        });
+      } else {
+        this.ko = this.deviceKo.slice();
+      }
       return this.ko;
     },
     labelOf: function (name, gender, age) {
@@ -140,12 +269,27 @@
       for (var i = 0; i < this.ko.length; i++) if (this.ko[i].uri === uri) return this.ko[i];
       return null;
     },
+    // 클로바가 실패했을 때 대신 읽어줄 이 기기의 목소리 하나
+    deviceFallback: function (gender) {
+      var list = this.deviceKo, i;
+      if (!list.length) return null;
+      for (i = 0; i < list.length; i++) if (list[i].gender === gender && !list[i].age) return list[i];
+      for (i = 0; i < list.length; i++) if (!list[i].age) return list[i];
+      return list[0];
+    },
     // 성별만 골랐을 때 그 기기에서 가장 무난한 화자 하나를 고른다
     pickGender: function (gender) {
+      var i, j;
+      // 클로바 목록에서는 «안내방송 추천» 표시가 붙은 화자를 먼저 고른다
+      if (this.ko.length && this.ko[0].clova) {
+        for (j = 0; j < this.ko.length; j++) if (this.ko[j].gender === gender && this.ko[j].recommended) return this.ko[j];
+        for (j = 0; j < this.ko.length; j++) if (this.ko[j].gender === gender) return this.ko[j];
+        for (j = 0; j < this.ko.length; j++) if (this.ko[j].recommended) return this.ko[j];
+        return this.ko[0] || null;
+      }
       var pref = gender === 'male'
         ? ['eddy', 'reed', 'rocko', 'injoon']
         : ['yuna', '유나', 'sunhi', 'heami', 'shelley', 'flo'];
-      var i, j;
       for (i = 0; i < pref.length; i++)
         for (j = 0; j < this.ko.length; j++)
           if (baseName(this.ko[j].name) === pref[i]) return this.ko[j];
@@ -158,6 +302,9 @@
       var dv = (center && center.defaultVoice) || { gender: 'female', voiceURI: '', rate: 1 };
       var bv = (bcast && bcast.voice) || {};
       var rate = bv.rate ? bv.rate : (dv.rate || 1);
+      // 톤은 «비어 있으면 센터 기본» — 0 이 «기본 톤»이라는 뜻의 진짜 값이라서 빈 값과 구분한다
+      var pitch = (bv.pitch === undefined || bv.pitch === null || bv.pitch === '')
+        ? Number(dv.pitch || 0) : Number(bv.pitch);
       var uri = bv.voiceURI || '';
       var gender = bv.gender || '';
       var v = null;
@@ -165,13 +312,18 @@
       if (!v && gender) v = this.pickGender(gender);
       if (!v && dv.voiceURI) v = this.byUri(dv.voiceURI);
       if (!v) v = this.pickGender(dv.gender || 'female');
-      return { voice: v, rate: rate, inherited: !bv.gender && !bv.voiceURI };
+      return { voice: v, rate: rate, pitch: pitch, inherited: !bv.gender && !bv.voiceURI };
     }
   };
   if (global.speechSynthesis) {
     Voices.refresh();
     speechSynthesis.onvoiceschanged = function () { Voices.refresh(); if (Voices.onReady) Voices.onReady(); };
   }
+  // 중계 서버 상태를 확인한 뒤 목소리 목록을 그 엔진에 맞게 갈아끼운다
+  Engine.probe().then(function () {
+    Voices.applyEngine();
+    if (Voices.onReady) Voices.onReady();
+  });
 
   /* ---------------- 대본 쪼개기 (긴 대본 대응) ---------------- */
   // 크롬은 한 번에 너무 긴 문장을 읽다가 중간에 끊기므로 문장 단위로 나눠 순서대로 읽는다.
@@ -237,17 +389,49 @@
         try { db.transaction('prep', 'readwrite').objectStore('prep').put(val, k); } catch (e) { }
       });
     },
+    // 만들어둔 소리 파일 (같은 문구 + 같은 목소리면 서버에 다시 묻지 않는다 → 요금 절약)
+    audioKey: function (text, speakerCode, rate, pitch) {
+      return 'a' + hash('clova|' + (speakerCode || '') + '|' + rate + '|' + (pitch || 0) + '|' + text);
+    },
+    getAudio: function (k) {
+      return this.get(k).then(function (r) { return r && r.audio ? r.audio : null; });
+    },
+    putAudio: function (k, buf) {
+      return this.put(k, { audio: buf, at: Date.now(), engine: 'clova' });
+    },
+
     // 방송 하나를 미리 준비해둔다 (네트워크가 끊겨도 그대로 나가도록)
     prepare: function (bcast, center) {
       var r = Voices.resolve(bcast, center);
-      var k = this.key(bcast.script, r.voice ? r.voice.uri : '', r.rate, 'device');
+      var k = this.key(bcast.script, r.voice ? r.voice.uri : '', r.rate, Engine.mode);
       var self = this;
       return this.get(k).then(function (hit) {
         if (hit && hit.plan) return { key: k, plan: hit.plan, cached: true };
         var plan = splitScript(bcast.script);
-        return self.put(k, { plan: plan, engine: 'device', at: Date.now(), name: bcast.name })
+        return self.put(k, { plan: plan, engine: Engine.mode, at: Date.now(), name: bcast.name })
           .then(function () { return { key: k, plan: plan, cached: false }; });
       });
+    },
+
+    // 예약 시각 전에 소리를 미리 받아둔다. 방송 순간에 네트워크가 흔들려도 그대로 나간다.
+    prefetch: function (bcast, center) {
+      if (Engine.mode !== 'clova') return Promise.resolve({ skipped: true });
+      var r = Voices.resolve(bcast, center);
+      if (!r.voice || !r.voice.clova) return Promise.resolve({ skipped: true });
+      var self = this, chunks = splitScript(bcast.script), got = 0;
+      var seq = Promise.resolve();
+      chunks.forEach(function (c) {
+        seq = seq.then(function () {
+          var ak = self.audioKey(c, r.voice.uri, r.rate, r.pitch);
+          return self.getAudio(ak).then(function (hit) {
+            if (hit) { got++; return null; }
+            return Engine.synth(c, { speaker: r.voice.uri, rate: r.rate, pitch: r.pitch })
+              .then(function (buf) { got++; return self.putAudio(ak, buf); })
+              .catch(function () { return null; });
+          });
+        });
+      });
+      return seq.then(function () { return { ready: got, total: chunks.length }; });
     }
   };
 
@@ -257,7 +441,11 @@
     armed: false,
     primed: false,
     busy: false,
+    stopped: false,
     current: null,
+    audioNode: null,
+    audioEl: null,
+    lastVoiceError: '',
     keepTimer: null,
     resumeTimer: null,
     isChromium: /Chrome|Chromium|Edg/.test(navigator.userAgent) && !/Apple Computer/.test(navigator.vendor || ''),
@@ -319,7 +507,86 @@
       });
     },
 
-    speakChunk: function (text, voice, rate) {
+    // 한 덩어리를 읽는다. 클로바 화자면 중계 서버에서 소리를 받아 틀고,
+    // 실패하거나 클로바가 아니면 이 기기에 설치된 목소리로 읽는다.
+    speakChunk: function (text, voice, rate, pitch) {
+      var self = this;
+      if (voice && voice.clova && Engine.mode === 'clova') {
+        return this.speakClova(text, voice, rate, pitch).catch(function (e) {
+          self.lastVoiceError = (e && e.human) || '고품질 음성을 받지 못해 기본 음성으로 읽었습니다.';
+          var fb = Voices.deviceFallback(voice.gender);
+          if (!fb) return 'error:' + ((e && e.code) || 'clova');
+          return self.speakDevice(text, fb, rate);
+        });
+      }
+      return this.speakDevice(text, voice, rate);
+    },
+
+    speakClova: function (text, voice, rate, pitch) {
+      var self = this;
+      var k = Cache.audioKey(text, voice.uri, rate, pitch);
+      return Cache.getAudio(k)
+        .then(function (hit) {
+          if (hit) return hit;
+          return Engine.synth(text, { speaker: voice.uri, rate: rate, pitch: pitch })
+            .then(function (buf) { Cache.putAudio(k, buf); return buf; });
+        })
+        .then(function (buf) { return self.playBuffer(buf); });
+    },
+
+    // 받아온 소리를 튼다. 예약 방송이 자동으로 나가야 하므로
+    // 이미 깨워둔 오디오 통로(AudioContext)를 먼저 쓰고, 안 되면 오디오 태그로 튼다.
+    playBuffer: function (buf) {
+      var self = this;
+      return new Promise(function (res, rej) {
+        if (!self.ctx || !self.ctx.decodeAudioData) return self.playElement(buf).then(res, rej);
+        var done = false;
+        var ok = function (audioBuf) {
+          if (done) return; done = true;
+          try {
+            var src = self.ctx.createBufferSource();
+            src.buffer = audioBuf;
+            src.connect(self.ctx.destination);
+            self.audioNode = src;
+            src.onended = function () { self.audioNode = null; res('end'); };
+            src.start(0);
+          } catch (e) { rej(e); }
+        };
+        var fail = function () {
+          if (done) return; done = true;
+          self.playElement(buf).then(res, rej);
+        };
+        try {
+          // 디코드하면서 원본이 비워지므로 복사본을 넘긴다
+          var p = self.ctx.decodeAudioData(buf.slice(0), ok, fail);
+          if (p && p.then) p.then(ok, fail);
+        } catch (e) { fail(); }
+      });
+    },
+
+    playElement: function (buf) {
+      var self = this;
+      return new Promise(function (res, rej) {
+        var url;
+        try {
+          // 실제 바이트를 보고 형식을 정한다 (RIFF 로 시작하면 WAV)
+          var head = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
+          var isWav = head.length === 4 && head[0] === 82 && head[1] === 73 && head[2] === 70 && head[3] === 70;
+          url = URL.createObjectURL(new Blob([buf], { type: isWav ? 'audio/wav' : 'audio/mpeg' }));
+        }
+        catch (e) { return rej(new Error('blob')); }
+        var a = new Audio(url);
+        self.audioEl = a;
+        var done = false;
+        var cleanup = function () { try { URL.revokeObjectURL(url); } catch (e) { } self.audioEl = null; };
+        a.onended = function () { if (done) return; done = true; cleanup(); res('end'); };
+        a.onerror = function () { if (done) return; done = true; cleanup(); rej(new Error('audio-error')); };
+        var pr = a.play();
+        if (pr && pr.catch) pr.catch(function () { if (done) return; done = true; cleanup(); rej(new Error('autoplay-blocked')); });
+      });
+    },
+
+    speakDevice: function (text, voice, rate) {
       var self = this;
       return new Promise(function (res) {
         if (!global.speechSynthesis) return res('no-engine');
@@ -346,6 +613,12 @@
 
     stop: function () {
       try { speechSynthesis.cancel(); } catch (e) { }
+      // 클로바 음성(파일 재생)도 같이 멈춘다
+      try { if (this.audioNode) { this.audioNode.onended = null; this.audioNode.stop(0); } } catch (e) { }
+      this.audioNode = null;
+      try { if (this.audioEl) { this.audioEl.pause(); this.audioEl.src = ''; } } catch (e) { }
+      this.audioEl = null;
+      this.stopped = true;
       clearInterval(this.resumeTimer); this.resumeTimer = null;
       this.busy = false; this.current = null;
       if (this.onState) this.onState(null);
@@ -357,6 +630,8 @@
       var self = this;
       if (this.busy && !opts.force) return Promise.resolve({ ok: false, why: 'busy' });
       this.busy = true;
+      this.stopped = false;
+      this.lastVoiceError = '';
       this.current = { name: bcast.name, id: bcast.id, at: Date.now() };
       if (this.onState) this.onState(this.current);
       var r = Voices.resolve(bcast, center);
@@ -373,7 +648,8 @@
           for (var n = 0; n < repeat; n++) {
             chunks.forEach(function (c) {
               seq = seq.then(function () {
-                return self.speakChunk(c, r.voice, r.rate).then(function (w) { results.push(w); });
+                if (self.stopped) { results.push('stopped'); return null; }
+                return self.speakChunk(c, r.voice, r.rate, r.pitch).then(function (w) { results.push(w); });
               });
             });
             if (n < repeat - 1) seq = seq.then(function () { return new Promise(function (z) { setTimeout(z, 900); }); });
@@ -394,23 +670,30 @@
     },
 
     // 미리듣기: 저장 전 대본을 그 자리에서 읽어준다
-    preview: function (text, voice, rate, repeat) {
+    preview: function (text, voice, rate, repeat, pitch) {
       var self = this;
       this.arm();
       try { speechSynthesis.cancel(); } catch (e) { }
       var chunks = splitScript(text);
       if (!chunks.length) return Promise.resolve({ ok: false, why: 'empty' });
       this.busy = true;
+      this.stopped = false;
+      this.lastVoiceError = '';
       if (this.onState) this.onState({ name: '미리듣기', id: '__preview', at: Date.now() });
       var seq = Promise.resolve(), n, rep = Math.max(1, Math.min(3, repeat || 1));
       for (n = 0; n < rep; n++) {
-        chunks.forEach(function (c) { seq = seq.then(function () { return self.speakChunk(c, voice, rate); }); });
+        chunks.forEach(function (c) {
+          seq = seq.then(function () {
+            if (self.stopped) return null;
+            return self.speakChunk(c, voice, rate, pitch);
+          });
+        });
         if (n < rep - 1) seq = seq.then(function () { return new Promise(function (z) { setTimeout(z, 900); }); });
       }
       return seq.then(function () {
         self.busy = false;
         if (self.onState) self.onState(null);
-        return { ok: true, chunks: chunks.length };
+        return { ok: true, chunks: chunks.length, note: self.lastVoiceError || '' };
       });
     }
   };
@@ -541,7 +824,7 @@
 
   global.NB = {
     DAYS: DAYS, uid: uid, pad: pad, hhmm: hhmm, ymd: ymd, hash: hash, clone: clone,
-    Store: Store, Voices: Voices, Player: Player, Cache: Cache, Log: Log, Scheduler: Scheduler,
+    Store: Store, Voices: Voices, Player: Player, Cache: Cache, Log: Log, Scheduler: Scheduler, Engine: Engine,
     splitScript: splitScript, occurrences: occurrences, nextRun: nextRun, scheduleLabel: scheduleLabel,
     humanGap: humanGap, isPastOnce: isPastOnce,
     KEYS: { state: LS, log: LS_LOG, fired: LS_FIRED }

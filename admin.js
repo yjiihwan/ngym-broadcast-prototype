@@ -1,7 +1,7 @@
 /* 관리 화면 */
 (function () {
   'use strict';
-  var S = NB.Store, V = NB.Voices, P = NB.Player, L = NB.Log;
+  var S = NB.Store, V = NB.Voices, P = NB.Player, L = NB.Log, E = NB.Engine;
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
 
@@ -36,6 +36,13 @@
     });
   }
 
+  /* ---------- 목소리 톤 표기 ---------- */
+  function pitchLabel(v) {
+    var n = Number(v);
+    if (!n) return '기본';
+    return (n < 0 ? '높게 ' : '낮게 ') + Math.abs(n);
+  }
+
   /* ---------- 목소리 드롭다운 ---------- */
   function fillVoiceSelect(sel, withInherit) {
     var ko = V.ko;
@@ -49,20 +56,37 @@
       o.value = v.uri; o.textContent = v.label;
       sel.appendChild(o);
     });
-    if (!ko.length) { o0.textContent = '이 기기에 한국어 목소리가 없습니다'; }
+    if (!ko.length) {
+      o0.textContent = E.mode === 'clova' ? '쓸 수 있는 화자가 없습니다' : '이 기기에 한국어 목소리가 없습니다';
+    }
   }
   function refreshVoiceUI() {
     V.refresh();
+    var prevDef = $('defVoice').value, prevEd = $('edVoice').value;
     fillVoiceSelect($('defVoice'), true);
     fillVoiceSelect($('edVoice'), true);
-    var n = V.ko.length;
-    $('voiceCount').textContent = n ? '한국어 목소리 ' + n + '개 사용 가능' : '한국어 목소리 없음';
-    $('voiceCount').className = 'tag ' + (n ? 'ok' : 'off');
+    var n = V.ko.length, clova = E.mode === 'clova';
+    $('voiceCount').textContent = clova
+      ? '클로바보이스 · 화자 ' + n + '명'
+      : (n ? '샘플 음성(임시) · 목소리 ' + n + '개' : '샘플 음성(임시) · 목소리 없음');
+    $('voiceCount').className = 'tag ' + (clova && n ? 'ok' : 'off');
+    $('voiceEngine').textContent = E.note;
+    $('defVoiceLabel').textContent = clova ? '화자 (클로바 안내 음성)' : '화자 (이 기기에 설치된 한국어 목소리)';
+    $('edVoiceLabel').textContent = clova ? '화자 직접 지정 (선택)' : '화자 직접 지정 (선택 · 이 기기 목소리)';
     var c = S.center();
+    // 엔진이 바뀌면 예전 화자 값이 목록에 없을 수 있다 → 그때는 «자동»으로 둔다
     $('defVoice').value = c.defaultVoice.voiceURI || '';
-    if (editing) $('edVoice').value = (editing.voice && editing.voice.voiceURI) || '';
+    if ($('defVoice').value !== (c.defaultVoice.voiceURI || '')) $('defVoice').value = '';
+    if (editing) {
+      $('edVoice').value = (editing.voice && editing.voice.voiceURI) || '';
+      if ($('edVoice').value !== ((editing.voice && editing.voice.voiceURI) || '')) $('edVoice').value = '';
+    }
+    if (prevDef && !$('defVoice').value && V.byUri(prevDef)) $('defVoice').value = prevDef;
+    if (prevEd && !$('edVoice').value && V.byUri(prevEd)) $('edVoice').value = prevEd;
+    renderList();
   }
   V.onReady = refreshVoiceUI;
+  E.onChange = refreshVoiceUI;
 
   /* ---------- 센터 ---------- */
   function renderCenters() {
@@ -78,6 +102,8 @@
     segSet('defGender', c.defaultVoice.gender || 'female');
     $('defRate').value = c.defaultVoice.rate || 1;
     $('defRateV').textContent = Number(c.defaultVoice.rate || 1).toFixed(2);
+    $('defPitch').value = Number(c.defaultVoice.pitch || 0);
+    $('defPitchV').textContent = pitchLabel(c.defaultVoice.pitch || 0);
     $('defVoice').value = c.defaultVoice.voiceURI || '';
     $('listTitle').textContent = c.name + ' 방송 목록';
   }
@@ -86,7 +112,8 @@
   function voiceTag(b) {
     var r = V.resolve(b, S.center());
     var who = r.voice ? r.voice.label : '목소리 없음';
-    return (r.inherited ? '센터 기본 · ' : '') + who + ' · ' + Number(r.rate).toFixed(2) + '배속';
+    return (r.inherited ? '센터 기본 · ' : '') + who + ' · ' + Number(r.rate).toFixed(2) + '배속'
+      + (Number(r.pitch) ? ' · 톤 ' + pitchLabel(r.pitch) : '');
   }
   function nextTag(b) {
     if (!b.enabled) return { cls: 'off', t: '꺼짐' };
@@ -151,7 +178,7 @@
   function blank() {
     return {
       id: NB.uid('b'), centerId: S.state.activeCenterId, name: '', script: '', enabled: true,
-      voice: { gender: '', voiceURI: '', rate: 0 }, repeat: 1,
+      voice: { gender: '', voiceURI: '', rate: 0, pitch: null }, repeat: 1,
       schedule: { type: 'weekly', days: [1, 2, 3, 4, 5], times: [], date: NB.ymd(new Date()), time: '' }
     };
   }
@@ -183,6 +210,11 @@
     $('edVoice').value = editing.voice.voiceURI || '';
     $('edRate').value = editing.voice.rate || S.center().defaultVoice.rate || 1;
     $('edRateV').textContent = editing.voice.rate ? Number(editing.voice.rate).toFixed(2) : '센터 기본';
+    $('edRate').dataset.touched = '';
+    var hasPitch = editing.voice.pitch !== undefined && editing.voice.pitch !== null && editing.voice.pitch !== '';
+    $('edPitch').value = hasPitch ? Number(editing.voice.pitch) : Number(S.center().defaultVoice.pitch || 0);
+    $('edPitchV').textContent = hasPitch ? pitchLabel(editing.voice.pitch) : '센터 기본';
+    $('edPitch').dataset.touched = hasPitch ? '1' : '';
     $('edDate').value = editing.schedule.date || NB.ymd(new Date());
     $('edTime').value = editing.schedule.time || '';
     $('edTimeNew').value = '';
@@ -207,6 +239,7 @@
     editing.voice.gender = segGet('edGender');
     editing.voice.voiceURI = $('edVoice').value;
     editing.voice.rate = $('edRate').dataset.touched === '1' ? Number($('edRate').value) : editing.voice.rate;
+    editing.voice.pitch = $('edPitch').dataset.touched === '1' ? Number($('edPitch').value) : (editing.voice.pitch == null ? null : editing.voice.pitch);
     editing.repeat = Number(segGet('edRepeat')) || 1;
     editing.schedule.type = segGet('edType');
     editing.schedule.date = $('edDate').value;
@@ -215,7 +248,11 @@
   }
   function editorVoice() {
     var g = segGet('edGender'), uri = $('edVoice').value;
-    var tmp = { voice: { gender: g, voiceURI: uri, rate: $('edRate').dataset.touched === '1' ? Number($('edRate').value) : 0 } };
+    var tmp = { voice: {
+      gender: g, voiceURI: uri,
+      rate: $('edRate').dataset.touched === '1' ? Number($('edRate').value) : 0,
+      pitch: $('edPitch').dataset.touched === '1' ? Number($('edPitch').value) : null
+    } };
     return V.resolve(tmp, S.center());
   }
 
@@ -228,7 +265,10 @@
   $('defRate').addEventListener('input', function () { $('defRateV').textContent = Number(this.value).toFixed(2); });
   $('defSave').addEventListener('click', function () {
     var c = S.center();
-    c.defaultVoice = { gender: segGet('defGender'), voiceURI: $('defVoice').value, rate: Number($('defRate').value) };
+    c.defaultVoice = {
+      gender: segGet('defGender'), voiceURI: $('defVoice').value,
+      rate: Number($('defRate').value), pitch: Number($('defPitch').value)
+    };
     S.save(); renderList(); toast('센터 기본 목소리를 저장했습니다.');
   });
   $('defPreview').addEventListener('click', function () {
@@ -237,7 +277,10 @@
     var v = uri ? V.byUri(uri) : V.pickGender(g);
     if (!v) return toast('이 기기에 한국어 목소리가 없습니다.');
     toast('들려드리는 중…');
-    P.preview('안녕하세요. 엔짐 ' + S.center().name.replace('엔짐 ', '') + '입니다. 이 목소리로 안내 방송을 진행합니다.', v, Number($('defRate').value), 1);
+    P.preview('안녕하세요. 엔짐 ' + S.center().name.replace('엔짐 ', '') + '입니다. 이 목소리로 안내 방송을 진행합니다.',
+      v, Number($('defRate').value), 1, Number($('defPitch').value)).then(function (r) {
+        if (r && r.note) toast(r.note);
+      });
   });
 
   $('newBtn').addEventListener('click', function () { openEditor(null); });
@@ -261,7 +304,7 @@
       var r = V.resolve(b, S.center());
       if (!r.voice) return toast('이 기기에 한국어 목소리가 없습니다.');
       toast('미리듣기 중…');
-      P.preview(b.script, r.voice, r.rate, 1);
+      P.preview(b.script, r.voice, r.rate, 1, r.pitch).then(function (x) { if (x && x.note) toast(x.note); });
     }
   });
 
@@ -269,6 +312,8 @@
   segBind('edRepeat');
   segBind('edType', function (v) { editing.schedule.type = v; renderType(); });
   $('edRate').addEventListener('input', function () { this.dataset.touched = '1'; $('edRateV').textContent = Number(this.value).toFixed(2); });
+  $('edPitch').addEventListener('input', function () { this.dataset.touched = '1'; $('edPitchV').textContent = pitchLabel(this.value); });
+  $('defPitch').addEventListener('input', function () { $('defPitchV').textContent = pitchLabel(this.value); });
   $('edScript').addEventListener('input', updLen);
   $('edDays').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
@@ -294,8 +339,8 @@
     var r = editorVoice();
     if (!r.voice) return toast('이 기기에 한국어 목소리가 없습니다.');
     $('edPrevHint').textContent = '지금 «' + r.voice.label + '» 목소리로 읽는 중입니다.';
-    P.preview(txt, r.voice, r.rate, Number(segGet('edRepeat')) || 1).then(function () {
-      $('edPrevHint').textContent = '저장하기 전에 지금 이 대본을 그대로 읽어드립니다.';
+    P.preview(txt, r.voice, r.rate, Number(segGet('edRepeat')) || 1, r.pitch).then(function (x) {
+      $('edPrevHint').textContent = (x && x.note) ? x.note : '저장하기 전에 지금 이 대본을 그대로 읽어드립니다.';
     });
   });
   $('edSave').addEventListener('click', function () {
