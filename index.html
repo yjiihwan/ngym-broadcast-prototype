@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>엔짐 이용안내 자동방송 — 관리</title>
+<meta name="theme-color" content="#0B0C0F">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <span class="brand-mark">ENZYME</span>
+      <span class="brand-sub">이용안내 자동방송</span>
+    </div>
+    <div class="topbar-sp"></div>
+    <select class="inp" id="centerSel" data-testid="center-select" style="width:auto;min-width:150px"></select>
+    <a class="btn btn-gold" href="onair.html" target="_blank" rel="noopener" data-testid="open-onair">송출 화면 열기</a>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="panel" data-testid="panel-default-voice">
+    <div class="panel-h">
+      <h2>센터 기본 목소리</h2>
+      <div class="sp"></div>
+      <span class="tag" id="voiceCount" data-testid="voice-count">목소리 확인 중</span>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label class="fl">성별</label>
+        <div class="seg" id="defGender" data-testid="def-gender">
+          <button type="button" data-v="female">여성</button>
+          <button type="button" data-v="male">남성</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="fl">화자 (이 기기에 설치된 한국어 목소리)</label>
+        <select class="inp" id="defVoice" data-testid="def-voice"></select>
+      </div>
+      <div class="field">
+        <label class="fl">말하기 속도 <b id="defRateV" style="color:var(--gold)">1.00</b></label>
+        <input class="inp" type="range" id="defRate" data-testid="def-rate" min="0.6" max="1.6" step="0.05" style="padding:0">
+      </div>
+    </div>
+    <div class="row" style="gap:8px">
+      <button class="btn" id="defPreview" data-testid="def-preview">기본 목소리 들어보기</button>
+      <button class="btn btn-ghost" id="defSave" data-testid="def-save">센터 기본값으로 저장</button>
+    </div>
+    <p class="hintline">여기서 정한 목소리가 모든 방송의 기본값입니다. 방송마다 따로 지정하면 그 방송만 덮어씁니다.</p>
+  </section>
+
+  <section>
+    <div class="panel-h" style="margin-bottom:14px">
+      <h2 id="listTitle">방송 목록</h2>
+      <div class="sp"></div>
+      <button class="btn btn-gold" id="newBtn" data-testid="new-broadcast">+ 새 방송</button>
+    </div>
+    <div id="list" data-testid="broadcast-list"></div>
+  </section>
+
+  <section class="panel" style="margin-top:26px">
+    <div class="panel-h"><h2>오늘 송출 이력</h2><div class="sp"></div>
+      <button class="btn btn-sm btn-ghost" id="clearLog">이력 비우기</button></div>
+    <div id="adminLog"></div>
+  </section>
+
+  <p class="hintline" style="text-align:center;margin-top:26px">
+    프로토타입입니다. 모든 설정은 이 브라우저에만 저장됩니다.
+    <button class="btn btn-sm btn-ghost" id="resetBtn" style="margin-left:8px">샘플 데이터로 되돌리기</button>
+  </p>
+</main>
+
+<!-- 방송 편집 -->
+<div class="mask hide" id="mask" data-testid="editor-mask">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edTitle">
+    <div class="modal-h">
+      <h2 id="edTitle">방송 편집</h2>
+      <div class="sp"></div>
+      <button class="x" id="edClose" aria-label="닫기">✕</button>
+    </div>
+
+    <div class="field">
+      <label class="fl" for="edName">방송 이름</label>
+      <input class="inp" id="edName" data-testid="ed-name" placeholder="예) 마감 30분 전 안내" maxlength="40">
+    </div>
+
+    <div class="field">
+      <label class="fl" for="edScript">대본 <span id="edLen" style="color:var(--muted2)"></span></label>
+      <textarea class="inp" id="edScript" data-testid="ed-script" placeholder="회원님께 안내 말씀 드립니다…"></textarea>
+      <p class="hintline">길게 쓰셔도 됩니다. 긴 대본은 문장 단위로 나눠 끊김 없이 이어 읽습니다. 숫자는 「삼십 분」처럼 한글로 적으면 더 자연스럽습니다.</p>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label class="fl">목소리</label>
+        <div class="seg" id="edGender" data-testid="ed-gender">
+          <button type="button" data-v="">센터 기본</button>
+          <button type="button" data-v="female">여성</button>
+          <button type="button" data-v="male">남성</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="fl" for="edVoice">화자 직접 지정 (선택)</label>
+        <select class="inp" id="edVoice" data-testid="ed-voice"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label class="fl">말하기 속도 <b id="edRateV" style="color:var(--gold)">기본</b></label>
+        <input class="inp" type="range" id="edRate" data-testid="ed-rate" min="0.6" max="1.6" step="0.05" style="padding:0">
+      </div>
+      <div class="field">
+        <label class="fl">반복 재생</label>
+        <div class="seg" id="edRepeat" data-testid="ed-repeat">
+          <button type="button" data-v="1">1회</button>
+          <button type="button" data-v="2">2회</button>
+          <button type="button" data-v="3">3회</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <button class="btn btn-gold" id="edPreview" data-testid="ed-preview" style="width:100%">▶ 미리듣기</button>
+      <p class="hintline" id="edPrevHint">저장하기 전에 지금 이 대본을 그대로 읽어드립니다.</p>
+    </div>
+
+    <div class="field">
+      <label class="fl">예약</label>
+      <div class="seg" id="edType" data-testid="ed-type">
+        <button type="button" data-v="weekly">반복 (요일)</button>
+        <button type="button" data-v="once">1회성 (날짜)</button>
+        <button type="button" data-v="none">예약 없음</button>
+      </div>
+    </div>
+
+    <div id="edWeekly" class="field">
+      <label class="fl">요일 (여러 개 선택)</label>
+      <div class="daybtns" id="edDays" data-testid="ed-days"></div>
+      <label class="fl" style="margin-top:16px">시각 (여러 개 등록 가능)</label>
+      <div class="row" style="gap:8px">
+        <input class="inp" type="time" id="edTimeNew" data-testid="ed-time-new" style="flex:1 1 140px;width:auto">
+        <button class="btn" id="edTimeAdd" data-testid="ed-time-add">시각 추가</button>
+      </div>
+      <div class="timechips" id="edTimes" data-testid="ed-times"></div>
+    </div>
+
+    <div id="edOnce" class="field hide">
+      <div class="row">
+        <div class="field" style="margin:0">
+          <label class="fl" for="edDate">날짜</label>
+          <input class="inp" type="date" id="edDate" data-testid="ed-date">
+        </div>
+        <div class="field" style="margin:0">
+          <label class="fl" for="edTime">시각</label>
+          <input class="inp" type="time" id="edTime" data-testid="ed-time">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-f">
+      <button class="btn btn-danger" id="edDelete" data-testid="ed-delete">삭제</button>
+      <div class="sp"></div>
+      <button class="btn" id="edCancel">취소</button>
+      <button class="btn btn-gold" id="edSave" data-testid="ed-save">저장</button>
+    </div>
+  </div>
+</div>
+
+<script src="core.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
