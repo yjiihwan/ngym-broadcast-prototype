@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>엔짐 이용안내 자동방송 — 관리</title>
-<meta name="theme-color" content="#0B0C0F">
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -16,7 +17,7 @@
     </div>
     <div class="topbar-sp"></div>
     <select class="inp" id="centerSel" data-testid="center-select" style="width:auto;min-width:150px"></select>
-    <a class="btn btn-gold" href="onair.html" target="_blank" rel="noopener" data-testid="open-onair">송출 화면 열기</a>
+    <a class="btn btn-cta" href="onair.html" target="_blank" rel="noopener" data-testid="open-onair">송출 화면 열기</a>
   </div>
 </header>
 
@@ -41,7 +42,7 @@
         <select class="inp" id="defVoice" data-testid="def-voice"></select>
       </div>
       <div class="field">
-        <label class="fl">말하기 속도 <b id="defRateV" style="color:var(--gold)">1.00</b></label>
+        <label class="fl">말하기 속도 <b id="defRateV" style="color:var(--link)">1.00</b></label>
         <input class="inp" type="range" id="defRate" data-testid="def-rate" min="0.6" max="1.6" step="0.05" style="padding:0">
       </div>
     </div>
@@ -56,7 +57,7 @@
     <div class="panel-h" style="margin-bottom:14px">
       <h2 id="listTitle">방송 목록</h2>
       <div class="sp"></div>
-      <button class="btn btn-gold" id="newBtn" data-testid="new-broadcast">+ 새 방송</button>
+      <button class="btn btn-cta" id="newBtn" data-testid="new-broadcast">+ 새 방송</button>
     </div>
     <div id="list" data-testid="broadcast-list"></div>
   </section>
@@ -88,7 +89,7 @@
     </div>
 
     <div class="field">
-      <label class="fl" for="edScript">대본 <span id="edLen" style="color:var(--muted2)"></span></label>
+      <label class="fl" for="edScript">대본 <span id="edLen" style="color:var(--text-muted)"></span></label>
       <textarea class="inp" id="edScript" data-testid="ed-script" placeholder="회원님께 안내 말씀 드립니다…"></textarea>
       <p class="hintline">길게 쓰셔도 됩니다. 긴 대본은 문장 단위로 나눠 끊김 없이 이어 읽습니다. 숫자는 「삼십 분」처럼 한글로 적으면 더 자연스럽습니다.</p>
     </div>
@@ -110,7 +111,7 @@
 
     <div class="row">
       <div class="field">
-        <label class="fl">말하기 속도 <b id="edRateV" style="color:var(--gold)">기본</b></label>
+        <label class="fl">말하기 속도 <b id="edRateV" style="color:var(--link)">기본</b></label>
         <input class="inp" type="range" id="edRate" data-testid="ed-rate" min="0.6" max="1.6" step="0.05" style="padding:0">
       </div>
       <div class="field">
@@ -124,7 +125,7 @@
     </div>
 
     <div class="field">
-      <button class="btn btn-gold" id="edPreview" data-testid="ed-preview" style="width:100%">▶ 미리듣기</button>
+      <button class="btn btn-cta" id="edPreview" data-testid="ed-preview" style="width:100%">▶ 미리듣기</button>
       <p class="hintline" id="edPrevHint">저장하기 전에 지금 이 대본을 그대로 읽어드립니다.</p>
     </div>
 
@@ -165,7 +166,7 @@
       <button class="btn btn-danger" id="edDelete" data-testid="ed-delete">삭제</button>
       <div class="sp"></div>
       <button class="btn" id="edCancel">취소</button>
-      <button class="btn btn-gold" id="edSave" data-testid="ed-save">저장</button>
+      <button class="btn btn-cta" id="edSave" data-testid="ed-save">저장</button>
     </div>
   </div>
 </div>

@@ -79,7 +79,7 @@
     var d = new Date(n.t), today = NB.ymd(d) === NB.ymd(new Date());
     var when = (today ? '오늘 ' : (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ') + NB.hhmm(d);
     $('nextLine').innerHTML = '<span class="t">' + esc(when) + '</span> · ' + esc(n.b.name) +
-      ' <span style="color:var(--muted);font-size:.7em">(' + esc(NB.humanGap(n.t - Date.now())) + ')</span>';
+      ' <span style="color:var(--text-muted);font-size:.7em">(' + esc(NB.humanGap(n.t - Date.now())) + ')</span>';
     // 미리 준비해 두면 인터넷이 끊겨도 그대로 나간다
     NB.Cache.prepare(n.b, S.center()).then(function (p) {
       $('prepLine').textContent = '준비 완료 · ' + p.plan.length + '문장' + (p.cached ? ' (이미 만들어 둔 음성 재사용)' : '');
@@ -120,7 +120,7 @@
       $('liveBar').classList.remove('hide');
       $('liveName').textContent = '송출 중 — ' + cur.name;
       $('statusTag').textContent = '송출 중';
-      $('statusTag').className = 'tag gold';
+      $('statusTag').className = 'tag cta';
     } else {
       $('liveBar').classList.add('hide');
       $('statusTag').textContent = started ? '대기 중' : '멈춤';

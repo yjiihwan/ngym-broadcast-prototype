@@ -93,7 +93,7 @@
     var n = NB.nextRun(b, Date.now());
     if (!n) return { cls: 'off', t: NB.isPastOnce(b, Date.now()) ? '지난 시각 (다시 안 나감)' : '예약 없음' };
     var d = new Date(n), today = NB.ymd(new Date()) === NB.ymd(d);
-    return { cls: 'gold', t: '다음 ' + (today ? '오늘 ' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + NB.hhmm(d) };
+    return { cls: 'cta', t: '다음 ' + (today ? '오늘 ' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + NB.hhmm(d) };
   }
   function renderList() {
     var box = $('list'), items = S.listFor(S.state.activeCenterId);
