@@ -267,7 +267,6 @@ input[type=range].inp::-moz-range-thumb{width:26px;height:26px;border:2px solid 
 .vs-pick.is-on{background:var(--surface);border-color:var(--cta);color:var(--text);font-weight:700}
 .vs-pick.is-on:hover{background:var(--surface-rose);border-color:var(--cta);color:var(--text)}
 /* 안 고른 상태에서 «지금 나갈 목소리»(센터 기본)를 점선으로만 귀띔한다 — 선택됨과 헷갈리지 않게 */
-.vs-card.is-ghost{border-style:dashed;border-color:var(--border-strong)}
 /* 고른 목소리 / 센터 기본 따름 한 줄 안내 */
 .vp-state{
   margin:12px 0 0;padding:10px 14px;border-radius:var(--r-sm);

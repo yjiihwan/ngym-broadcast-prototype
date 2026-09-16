@@ -187,7 +187,7 @@
     var b = {
       id: NB.uid('t'), centerId: S.state.activeCenterId, name: '시험 방송 (' + NB.hhmm(t) + ')', enabled: true,
       script: '시험 방송입니다. 예약한 시각에 안내 방송이 정상적으로 나가고 있습니다.',
-      voice: { speaker: '' },
+      voice: { speaker: NB.centerSpeaker(S.center()) },
       schedule: { type: 'once', days: [], times: [], date: NB.ymd(t), time: NB.hhmm(t) }
     };
     S.upsert(b);

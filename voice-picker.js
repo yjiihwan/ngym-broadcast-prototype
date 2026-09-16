@@ -27,10 +27,10 @@
   }
 
   /* el 에 카드 4장을 그린다.
-   * opts.get()            -> 지금 고른 화자 id ('' 면 «센터 기본 따름», allowInherit 일 때만)
-   * opts.set(id)          -> 고른 값을 저장한다 ('' 면 센터 기본으로 되돌림)
-   * opts.allowInherit     -> 방송 편집처럼 «안 고름(센터 기본)» 상태가 있는 화면
-   * opts.inheritSpeaker() -> 그때 실제로 나갈 센터 기본 화자 id
+   * opts.get()            -> 지금 고른 화자 id (항상 4명 중 하나여야 한다)
+   * opts.set(id)          -> 고른 값을 저장한다
+   * opts.showDefaultHint  -> 방송 편집처럼 «센터 기본은 지금 OOO» 안내 줄을 다는 화면
+   * opts.defaultSpeaker() -> 그 시점 센터 기본 화자 id (되돌리기 버튼이 이 값으로 되돌린다)
    * opts.testPrefix       -> data-testid 앞머리 (기본 'vs')
    * opts.pickLabel/pickedLabel -> 고르기 버튼 글자
    * opts.scriptNo         -> 미리듣기로 틀 문안 번호 (기본 '1')
@@ -60,7 +60,7 @@
           '</div>';
         }).join('') +
       '</div>' +
-      (opts.allowInherit
+      (opts.showDefaultHint
         ? '<p class="vp-state" data-testid="' + pre + '-state"></p>'
         : '') +
       '<p class="vp-demo" data-testid="' + pre + '-demo" hidden>데모 음성 — 실서비스에선 서버에서 합성됩니다.</p>';
@@ -81,15 +81,14 @@
 
     function paint() {
       var cur = opts.get ? (opts.get() || '') : '';
-      if (cur && !NB.speakerById(cur)) cur = '';
-      // «안 고름»이면 센터 기본 화자를 흐리게 표시해 어떤 목소리가 나갈지 보이게 한다
-      var eff = cur || (opts.inheritSpeaker ? opts.inheritSpeaker() : '');
+      // 고른 값이 비거나 깨졌으면 센터 기본으로 채워 «항상 한 장은 선택» 상태를 지킨다
+      if (!NB.speakerById(cur)) cur = opts.defaultSpeaker ? (opts.defaultSpeaker() || '') : '';
+      if (!NB.speakerById(cur)) cur = NB.DEFAULT_SPEAKER;
+      var def = opts.defaultSpeaker ? (opts.defaultSpeaker() || '') : '';
       [].forEach.call(listEl.querySelectorAll('.vs-card'), function (card) {
         var id = card.dataset.sp;
-        var on = !!cur && id === cur;
-        var ghost = !cur && id === eff;
+        var on = id === cur;
         card.classList.toggle('is-on', on);
-        card.classList.toggle('is-ghost', ghost);
         card.setAttribute('aria-selected', String(on));
         var play = card.querySelector('.vs-play');
         var live = (owner === api) && playing === id;
@@ -101,11 +100,13 @@
         pk.setAttribute('aria-pressed', String(on));
       });
       if (stateEl) {
-        var sp = NB.speakerById(eff);
-        stateEl.innerHTML = cur
-          ? '이 방송만 <b>' + esc(sp ? sp.name : '') + '</b> 목소리로 나갑니다. ' +
-            '<button type="button" class="linkbtn" data-act="inherit" data-testid="' + pre + '-inherit">센터 기본값 따르기</button>'
-          : '센터 기본 목소리 사용 중 — <b>' + esc(NB.speakerLine(sp)) + '</b>';
+        var cs = NB.speakerById(cur), ds = NB.speakerById(def);
+        // 방송마다 화자를 따로 들고 있으므로, 센터 기본은 «참고값»으로만 알려준다.
+        stateEl.innerHTML = (cur === def)
+          ? '이 방송은 <b>' + esc(cs ? cs.name : '') + '</b> 목소리로 나갑니다 — 지금 센터 기본 목소리와 같습니다.'
+          : '이 방송은 <b>' + esc(cs ? cs.name : '') + '</b> 목소리로 나갑니다. ' +
+            '지금 센터 기본 목소리는 <b>' + esc(ds ? ds.name : '') + '</b> 입니다. ' +
+            '<button type="button" class="linkbtn" data-act="inherit" data-testid="' + pre + '-inherit">센터 기본값으로 되돌리기</button>';
       }
       if (demoEl) demoEl.hidden = !(owner === api && playing);
     }
@@ -124,10 +125,8 @@
       }
       var pk = e.target.closest('.vs-pick');
       if (!pk) return;
+      // 항상 4장 중 한 장이 선택돼 있다 — 다시 눌러도 선택이 풀리지 않는다
       var want = pk.dataset.sp;
-      // 이미 고른 카드를 다시 누르면 «센터 기본 따름»으로 되돌린다 (편집 화면에서만)
-      var now = opts.get ? (opts.get() || '') : '';
-      if (opts.allowInherit && now === want) want = '';
       if (opts.set) opts.set(want);
       repaintAll();
     });
@@ -135,7 +134,8 @@
     if (stateEl) {
       stateEl.addEventListener('click', function (e) {
         if (!e.target.closest('[data-act=inherit]')) return;
-        if (opts.set) opts.set('');
+        var d = opts.defaultSpeaker ? opts.defaultSpeaker() : '';
+        if (opts.set && NB.speakerById(d)) opts.set(d);
         repaintAll();
       });
     }

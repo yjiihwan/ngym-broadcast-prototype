@@ -36,6 +36,13 @@
     for (var i = 0; i < SPEAKERS.length; i++) if (SPEAKERS[i].id === id) return SPEAKERS[i];
     return null;
   }
+  // 센터의 «기본 목소리» — 새 방송을 만들 때 처음 박아 넣을 값이다.
+  // WHY: 이 값은 «씨앗»일 뿐이다. 이미 만들어진 방송은 자기 speaker 를 들고 있으므로
+  //      센터 기본을 나중에 바꿔도 따라 바뀌지 않는다.
+  function centerSpeaker(center) {
+    var id = center && center.defaultVoice && center.defaultVoice.speaker;
+    return speakerById(id) ? id : DEFAULT_SPEAKER;
+  }
 
   /* ---------------- 기본 데이터 ---------------- */
   var SEED_CENTERS = [
@@ -44,18 +51,26 @@
     { id: 'c_songdo', name: '엔짐 송도', defaultVoice: { speaker: 'nminyoung' } }
   ];
 
+  function seedCenterSpeaker(centerId) {
+    for (var i = 0; i < SEED_CENTERS.length; i++) {
+      if (SEED_CENTERS[i].id === centerId) return centerSpeaker(SEED_CENTERS[i]);
+    }
+    return DEFAULT_SPEAKER;
+  }
+
+  // 시연 데이터도 방송마다 화자를 «명시»한다 — 빈 값(상속) 상태를 남기지 않는다.
   function seedBroadcasts() {
     return [
       {
         id: uid('b'), centerId: 'c_gangnam', name: '마감 30분 전 안내', enabled: true,
         script: '회원님, 안녕하세요. 엔짐 강남입니다. 금일 영업 종료 삼십 분 전입니다. 이용을 마치신 회원님께서는 샤워실과 라커룸 이용에 참고해 주시기 바랍니다. 오늘도 엔짐을 찾아주셔서 감사합니다.',
-        voice: { speaker: '' },
+        voice: { speaker: seedCenterSpeaker('c_gangnam') },
         schedule: { type: 'weekly', days: [1, 2, 3, 4, 5], times: ['21:30'], date: '', time: '' }
       },
       {
         id: uid('b'), centerId: 'c_gangnam', name: '기구 정리 안내', enabled: true,
         script: '회원님께 안내 말씀 드립니다. 사용하신 덤벨과 원판은 제자리에 정리해 주시고, 벤치와 매트는 비치된 클리너로 닦아주시기 바랍니다. 쾌적한 운동 환경을 위해 협조해 주셔서 감사합니다.',
-        voice: { speaker: '' },
+        voice: { speaker: seedCenterSpeaker('c_gangnam') },
         schedule: { type: 'weekly', days: [1, 2, 3, 4, 5, 6, 0], times: ['12:00', '19:00'], date: '', time: '' }
       },
       {
@@ -67,7 +82,7 @@
       {
         id: uid('b'), centerId: 'c_pangyo', name: '개인 레슨 안내', enabled: true,
         script: '엔짐 판교를 이용해 주시는 회원님께 안내 드립니다. 전문 트레이너와 함께하는 일대일 퍼스널 레슨을 프런트에서 상담하실 수 있습니다. 편하신 시간에 문의해 주시기 바랍니다.',
-        voice: { speaker: '' },
+        voice: { speaker: seedCenterSpeaker('c_pangyo') },
         schedule: { type: 'weekly', days: [2, 4], times: ['18:30'], date: '', time: '' }
       }
     ];
@@ -83,9 +98,14 @@
       if (!speakerById(dv.speaker)) dv.speaker = G2S[dv.gender] || DEFAULT_SPEAKER;
       delete dv.gender; delete dv.voiceURI; delete dv.rate; delete dv.pitch;
     });
+    // 옛 저장값의 '' (= 그때는 «센터 기본 따름» 이라는 실시간 링크였다) 를 읽는 순간 실제 화자로 1회 확정한다.
+    // WHY: 센터 기본을 바꿨을 때 기존 방송이 통째로 따라 바뀌던 구조를 끊는 지점이다.
+    //      확정하지 않으면 기존 사용자의 방송 화자가 다음 기본값 변경 때 조용히 갈아엎힌다.
+    var byId = {};
+    (s.centers || []).forEach(function (c) { byId[c.id] = c; });
     (s.broadcasts || []).forEach(function (b) {
       var bv = b.voice || (b.voice = {});
-      if (!speakerById(bv.speaker)) bv.speaker = '';   // '' = 센터 기본 목소리를 따른다
+      if (!speakerById(bv.speaker)) bv.speaker = centerSpeaker(byId[b.centerId]);
       delete bv.gender; delete bv.voiceURI; delete bv.rate; delete bv.pitch;
       delete b.repeat;
     });
@@ -105,7 +125,14 @@
         var raw = localStorage.getItem(LS);
         if (raw) {
           var s = JSON.parse(raw);
-          if (s && s.centers && s.broadcasts) { this.state = migrate(s); return this.state; }
+          if (s && s.centers && s.broadcasts) {
+            this.state = migrate(s);
+            // 옮겨 심은 값(특히 방송 화자 확정)을 «그 자리에서» 저장한다.
+            // WHY: 메모리에만 두면 저장 계기가 없는 사용자는 다음 실행 때 또 빈 값으로 읽혀
+            //      센터 기본값을 바꾸는 순간 기존 방송이 통째로 끌려가는 옛 동작으로 돌아간다.
+            if (JSON.stringify(this.state) !== raw) this.save();
+            return this.state;
+          }
         }
       } catch (e) { /* 손상된 저장값은 무시하고 초기화 */ }
       this.state = freshState();
@@ -316,18 +343,18 @@
       // 중계 서버가 없으면 이 기기 목소리로 읽는다 (고른 화자와 같은 성별)
       return this.deviceFallback(sp.gender) || this.ko[0] || null;
     },
-    // 방송 설정 + 센터 기본값 -> 실제 사용할 화자
-    // 고르는 축은 «화자 4명 중 하나» 하나뿐이다. 방송이 화자를 안 고르면 센터 기본값을 따른다.
+    // 방송 설정 -> 실제 사용할 화자
+    // 방송마다 자기 화자를 들고 있다. 센터 기본값은 «새 방송을 만들 때의 초기값» 일 뿐
+    // 여기서 기존 방송에 소급 적용되지 않는다.
+    // 값이 어떤 이유로든 비었을 때만 센터 기본 -> DEFAULT_SPEAKER 순으로 안전하게 내려간다(방어).
     // 속도·톤은 화면에서 없앴으므로 항상 기본값으로 고정한다 (저장값이 남아 있어도 무시).
     resolve: function (bcast, center) {
-      var dv = (center && center.defaultVoice) || {};
       var bv = (bcast && bcast.voice) || {};
-      var own = speakerById(bv.speaker) ? bv.speaker : '';
-      var speaker = own || (speakerById(dv.speaker) ? dv.speaker : DEFAULT_SPEAKER);
+      var speaker = speakerById(bv.speaker) ? bv.speaker : centerSpeaker(center);
       return {
         voice: this.bySpeaker(speaker),
         rate: DEFAULT_RATE, pitch: DEFAULT_PITCH,
-        speaker: speaker, inherited: !own
+        speaker: speaker
       };
     }
   };
@@ -867,6 +894,7 @@
     splitScript: splitScript, occurrences: occurrences, nextRun: nextRun, scheduleLabel: scheduleLabel,
     humanGap: humanGap, isPastOnce: isPastOnce,
     SPEAKERS: SPEAKERS, DEFAULT_SPEAKER: DEFAULT_SPEAKER, speakerById: speakerById, speakerLine: speakerLine,
+    centerSpeaker: centerSpeaker,
     KEYS: { state: LS, log: LS_LOG, fired: LS_FIRED }
   };
 })(window);

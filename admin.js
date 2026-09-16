@@ -48,24 +48,25 @@
       if (c.defaultVoice.speaker === id) return;
       c.defaultVoice.speaker = id;
       S.save();
-      renderDefaults(); renderList(); edPicker.paint();
+      // 이미 만들어진 방송은 각자 화자를 들고 있으므로 여기서 바뀌지 않는다 (목록은 그대로 다시 그린다)
+      renderDefaults(); renderList(); if (editing) edPicker.paint();
       var sp = NB.speakerById(id);
-      toast('센터 기본 목소리를 «' + (sp ? sp.name : id) + '»(으)로 저장했습니다.');
+      toast('센터 기본 목소리를 «' + (sp ? sp.name : id) + '»(으)로 저장했습니다. 앞으로 만드는 새 방송에 적용됩니다.');
     }
   });
-  // 방송 편집 화면: 안 고르면 '' = 센터 기본값을 따른다
+  // 방송 편집 화면: 방송마다 자기 화자를 들고 있다 (항상 4장 중 한 장이 선택 상태)
   var edPicker = NB.VoicePicker.mount($('edVoicePick'), {
     testPrefix: 'edv',
-    allowInherit: true,
+    showDefaultHint: true,
     pickLabel: '이 목소리로',
     pickedLabel: '✓ 이 목소리로',
     get: function () { return (editing && editing.voice && editing.voice.speaker) || ''; },
     set: function (id) {
-      if (!editing) return;
-      editing.voice.speaker = id || '';
+      if (!editing || !NB.speakerById(id)) return;
+      editing.voice.speaker = id;
       $('edPrevHint').textContent = '저장하기 전에 지금 이 대본을 그대로 읽어드립니다.';
     },
-    inheritSpeaker: function () { return S.center().defaultVoice.speaker || NB.DEFAULT_SPEAKER; }
+    defaultSpeaker: function () { return NB.centerSpeaker(S.center()); }
   });
 
   function refreshVoiceUI() {
@@ -101,7 +102,7 @@
   function voiceTag(b) {
     var r = V.resolve(b, S.center());
     var sp = NB.speakerById(r.speaker);
-    return (r.inherited ? '센터 기본 · ' : '') + (sp ? sp.name : '목소리 없음') + ' 목소리';
+    return (sp ? sp.name : '목소리 없음') + ' 목소리';
   }
   function nextTag(b) {
     if (!b.enabled) return { cls: 'off', t: '꺼짐' };
@@ -186,7 +187,8 @@
   function blank() {
     return {
       id: NB.uid('b'), centerId: S.state.activeCenterId, name: '', script: '', enabled: true,
-      voice: { speaker: '' },   // '' = 센터 기본 목소리를 따른다
+      // 만드는 «그 시점» 센터 기본 화자를 방송 자신의 값으로 박아 넣는다 (씨앗일 뿐, 이후 연동되지 않는다)
+      voice: { speaker: NB.centerSpeaker(S.center()) },
       schedule: { type: 'weekly', days: [1, 2, 3, 4, 5], times: [], date: NB.ymd(new Date()), time: '' }
     };
   }
@@ -213,8 +215,8 @@
     $('edDelete').classList.toggle('hide', !b);
     $('edName').value = editing.name;
     $('edScript').value = editing.script;
-    if (!editing.voice) editing.voice = { speaker: '' };
-    if (!NB.speakerById(editing.voice.speaker)) editing.voice.speaker = '';
+    if (!editing.voice) editing.voice = {};
+    if (!NB.speakerById(editing.voice.speaker)) editing.voice.speaker = NB.centerSpeaker(S.center());
     edPicker.paint();
     $('edDate').value = editing.schedule.date || NB.ymd(new Date());
     $('edTime').value = editing.schedule.time || '';
@@ -304,8 +306,7 @@
     var r = editorVoice();
     if (!r.voice) return toast('이 기기에 한국어 목소리가 없습니다.');
     var sp = NB.speakerById(r.speaker);
-    $('edPrevHint').textContent = '지금 «' + (sp ? sp.name : '') + '» 목소리로 읽는 중입니다.'
-      + (r.inherited ? ' (센터 기본 목소리)' : '');
+    $('edPrevHint').textContent = '지금 «' + (sp ? sp.name : '') + '» 목소리로 읽는 중입니다.';
     P.preview(txt, r.voice, r.rate, r.pitch).then(function (x) {
       $('edPrevHint').textContent = (x && x.note) ? x.note : '저장하기 전에 지금 이 대본을 그대로 읽어드립니다.';
     });

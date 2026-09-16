@@ -24,7 +24,8 @@
 
 <main class="wrap">
 
-  <!-- 목소리 고르기 — 카드 4장이 곧 센터 기본 목소리다 (같은 부품이 방송 편집에서도 쓰인다) -->
+  <!-- 목소리 고르기 — 여기서 고른 값은 «새 방송을 만들 때의 시작값»이다. 기존 방송에는 소급되지 않는다.
+       (같은 카드 부품이 방송 편집에서도 쓰인다 — voice-picker.js 한 곳) -->
   <section class="panel" id="vsPanel" data-testid="panel-default-voice">
     <div class="panel-h">
       <h2>방송 목소리</h2>
@@ -32,7 +33,7 @@
       <span class="tag" id="voiceCount" data-testid="voice-count">목소리 확인 중</span>
     </div>
     <div class="field">
-      <label class="fl">이 센터의 기본 목소리</label>
+      <label class="fl">새 방송의 기본 목소리</label>
       <p class="pickline" id="defSpeaker" data-testid="def-speaker">아라 · 여성 · 차분한 상담·안내 톤</p>
     </div>
     <div class="field">
@@ -42,7 +43,7 @@
     <p class="vs-text" id="vsText" data-testid="vs-text"></p>
     <div id="defVoicePick"></div>
     <p class="hintline" id="voiceEngine" data-testid="voice-engine">음성 확인 중…</p>
-    <p class="hintline" data-testid="vs-notice">네 목소리를 같은 문안으로 들어보고 «이 목소리로 설정»을 누르면 그 목소리가 이 센터 모든 방송의 기본값이 됩니다. 고르는 즉시 저장됩니다. 방송 하나만 다른 목소리로 내보내려면 그 방송을 수정해 따로 고르세요.</p>
+    <p class="hintline" data-testid="vs-notice">네 목소리를 같은 문안으로 들어보고 «이 목소리로 설정»을 누르면, 앞으로 만드는 새 방송이 그 목소리로 시작합니다. 고르는 즉시 저장됩니다. <b>이미 만들어 둔 방송의 목소리는 그대로 유지됩니다</b> — 방송마다 목소리가 따로 저장되기 때문입니다. 특정 방송의 목소리를 바꾸려면 그 방송을 «수정»해서 고르세요.</p>
   </section>
 
   <section>
