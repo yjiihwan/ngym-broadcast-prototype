@@ -133,7 +133,8 @@
       return '<article class="bcard ' + (b.enabled ? '' : 'off') + '" data-testid="bcard" data-id="' + b.id + '">' +
         '<div class="bcard-h"><h3>' + esc(b.name) + '</h3>' +
         '<button class="sw" data-act="toggle" data-testid="toggle" aria-pressed="' + (b.enabled ? 'true' : 'false') + '" aria-label="켜기/끄기"></button></div>' +
-        '<p class="bcard-script">' + esc(b.script) + '</p>' +
+        '<p class="bcard-script" data-testid="bcard-script">' + esc(b.script) + '</p>' +
+        '<button class="bcard-more" data-act="more" data-testid="card-more" hidden></button>' +
         '<div class="bcard-meta">' +
         '<span class="tag">' + esc(NB.scheduleLabel(b)) + '</span>' +
         '<span class="tag ' + nt.cls + '">' + esc(nt.t) + '</span>' +
@@ -147,6 +148,26 @@
         '<button class="btn btn-sm btn-danger" data-act="del">삭제</button>' +
         '</div></article>';
     }).join('');
+    applyClamp();
+  }
+  // 문구는 기본이 «전문 노출». 8줄을 실제로 넘길 때만 접고 «더보기»를 띄운다.
+  // 폭에 따라 줄 수가 달라지므로 글자 수가 아니라 실측 높이로 판단한다.
+  var MAX_LINES = 8, expanded = Object.create(null);
+  function applyClamp() {
+    var cards = document.querySelectorAll('#list [data-testid=bcard]');
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i], el = card.querySelector('.bcard-script'), more = card.querySelector('.bcard-more');
+      if (!el || !more) continue;
+      var id = card.dataset.id, open = !!expanded[id];
+      el.classList.remove('is-clamped');
+      var lh = parseFloat(getComputedStyle(el).lineHeight) || 21;
+      var overflows = el.scrollHeight > lh * MAX_LINES + 1;
+      if (!overflows) { more.hidden = true; delete expanded[id]; continue; }
+      more.hidden = false;
+      more.textContent = open ? '접기' : '더보기';
+      more.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (!open) el.classList.add('is-clamped');
+    }
   }
   function renderLog() {
     var rows = L.today(S.state.activeCenterId);
@@ -295,6 +316,7 @@
     var card = e.target.closest('[data-id]'); if (!card) return;
     var b = S.get(card.dataset.id); if (!b) return;
     var act = btn.dataset.act;
+    if (act === 'more') { if (expanded[b.id]) delete expanded[b.id]; else expanded[b.id] = 1; applyClamp(); return; }
     if (act === 'toggle') { b.enabled = !b.enabled; S.upsert(b); renderList(); toast(b.name + ' — ' + (b.enabled ? '켰습니다' : '껐습니다')); }
     else if (act === 'edit') openEditor(b);
     else if (act === 'del') { if (confirm('«' + b.name + '» 방송을 삭제할까요?')) { S.remove(b.id); renderList(); toast('삭제했습니다.'); } }
@@ -365,6 +387,8 @@
   refreshVoiceUI();
   setTimeout(refreshVoiceUI, 900);
   setInterval(renderList, 30000); // «다음 송출» 배지 갱신
+  // 폭이 바뀌면 줄 수가 바뀐다 → 접기 필요 여부를 다시 판정
+  var clampTimer; addEventListener('resize', function () { clearTimeout(clampTimer); clampTimer = setTimeout(applyClamp, 150); });
 
   window.__admin = { openEditor: openEditor, renderAll: renderAll, toast: toast };
 })();
