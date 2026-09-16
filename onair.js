@@ -160,7 +160,7 @@
     // 소리가 실제로 열렸는지 형이 바로 알 수 있게 짧은 확인 음성
     var v = V.resolve({ voice: {} }, S.center());
     P.chime().then(function () {
-      if (v.voice) return P.preview('엔짐 자동방송을 시작합니다.', v.voice, v.rate, 1);
+      if (v.voice) return P.preview('엔짐 자동방송을 시작합니다.', v.voice, v.rate, v.pitch);
     });
   }
 
@@ -187,7 +187,7 @@
     var b = {
       id: NB.uid('t'), centerId: S.state.activeCenterId, name: '시험 방송 (' + NB.hhmm(t) + ')', enabled: true,
       script: '시험 방송입니다. 예약한 시각에 안내 방송이 정상적으로 나가고 있습니다.',
-      voice: { voiceURI: '', rate: 0 }, repeat: 1,
+      voice: { speaker: '' },
       schedule: { type: 'once', days: [], times: [], date: NB.ymd(t), time: NB.hhmm(t) }
     };
     S.upsert(b);

@@ -17,14 +17,21 @@
 
   /* ---------------- 방송 목소리 4종 (정본) ---------------- */
   // 화면의 목소리 카드 · 미리듣기 mp3 · 실제 송출 화자가 모두 이 표 하나를 본다.
-  // hz 는 미리듣기 mp3 에서 실제로 잰 기본 주파수 범위다.
   var SPEAKERS = [
-    { id: 'nara_call', name: '아라', gender: 'female', tone: '차분한 상담·안내 톤', hz: '226~258Hz' },
-    { id: 'nminyoung', name: '민영', gender: 'female', tone: '밝고 높은 톤', hz: '291~333Hz' },
-    { id: 'njonghyun', name: '종현', gender: 'male', tone: '부드러운 중저음', hz: '160~183Hz' },
-    { id: 'nsinu', name: '신우', gender: 'male', tone: '낮고 묵직한 톤', hz: '120~123Hz' }
+    { id: 'nara_call', name: '아라', gender: 'female', tone: '차분한 상담·안내 톤' },
+    { id: 'nminyoung', name: '민영', gender: 'female', tone: '밝고 높은 톤' },
+    { id: 'njonghyun', name: '종현', gender: 'male', tone: '부드러운 중저음' },
+    { id: 'nsinu', name: '신우', gender: 'male', tone: '낮고 묵직한 톤' }
   ];
+  // 화자 한 명을 «이름 · 성별 · 톤» 한 줄로 적는다 (카드·목록·배지가 모두 이걸 쓴다)
+  function speakerLine(sp) {
+    if (!sp) return '';
+    return sp.name + ' · ' + (sp.gender === 'female' ? '여성' : '남성') + ' · ' + sp.tone;
+  }
   var DEFAULT_SPEAKER = 'nara_call';
+  // 속도·톤 고르기는 화면에서 뺐다 — 엔진에는 이 기본값 한 쌍만 넘어간다.
+  // TODO(handoff): 실서버 연동 시에도 이 두 값이 POST /api/tts 의 speed·pitch 로 그대로 나간다.
+  var DEFAULT_RATE = 1, DEFAULT_PITCH = 0;
   function speakerById(id) {
     for (var i = 0; i < SPEAKERS.length; i++) if (SPEAKERS[i].id === id) return SPEAKERS[i];
     return null;
@@ -32,9 +39,9 @@
 
   /* ---------------- 기본 데이터 ---------------- */
   var SEED_CENTERS = [
-    { id: 'c_gangnam', name: '엔짐 강남', defaultVoice: { speaker: DEFAULT_SPEAKER, voiceURI: '', rate: 1 } },
-    { id: 'c_pangyo', name: '엔짐 판교', defaultVoice: { speaker: 'njonghyun', voiceURI: '', rate: 0.95 } },
-    { id: 'c_songdo', name: '엔짐 송도', defaultVoice: { speaker: DEFAULT_SPEAKER, voiceURI: '', rate: 1.05 } }
+    { id: 'c_gangnam', name: '엔짐 강남', defaultVoice: { speaker: DEFAULT_SPEAKER } },
+    { id: 'c_pangyo', name: '엔짐 판교', defaultVoice: { speaker: 'njonghyun' } },
+    { id: 'c_songdo', name: '엔짐 송도', defaultVoice: { speaker: 'nminyoung' } }
   ];
 
   function seedBroadcasts() {
@@ -42,39 +49,46 @@
       {
         id: uid('b'), centerId: 'c_gangnam', name: '마감 30분 전 안내', enabled: true,
         script: '회원님, 안녕하세요. 엔짐 강남입니다. 금일 영업 종료 삼십 분 전입니다. 이용을 마치신 회원님께서는 샤워실과 라커룸 이용에 참고해 주시기 바랍니다. 오늘도 엔짐을 찾아주셔서 감사합니다.',
-        voice: { voiceURI: '', rate: 0 }, repeat: 1,
+        voice: { speaker: '' },
         schedule: { type: 'weekly', days: [1, 2, 3, 4, 5], times: ['21:30'], date: '', time: '' }
       },
       {
         id: uid('b'), centerId: 'c_gangnam', name: '기구 정리 안내', enabled: true,
         script: '회원님께 안내 말씀 드립니다. 사용하신 덤벨과 원판은 제자리에 정리해 주시고, 벤치와 매트는 비치된 클리너로 닦아주시기 바랍니다. 쾌적한 운동 환경을 위해 협조해 주셔서 감사합니다.',
-        voice: { voiceURI: '', rate: 0.95 }, repeat: 1,
+        voice: { speaker: '' },
         schedule: { type: 'weekly', days: [1, 2, 3, 4, 5, 6, 0], times: ['12:00', '19:00'], date: '', time: '' }
       },
       {
         id: uid('b'), centerId: 'c_gangnam', name: '주차 등록 안내', enabled: false,
         script: '주차 차량 안내 말씀 드립니다. 차량을 가지고 오신 회원님께서는 프런트에서 주차 등록을 진행해 주시기 바랍니다. 미등록 차량은 주차 요금이 부과될 수 있습니다.',
-        voice: { voiceURI: '', rate: 0 }, repeat: 2,
+        voice: { speaker: 'nsinu' },
         schedule: { type: 'once', days: [], times: [], date: ymd(new Date()), time: '18:00' }
       },
       {
         id: uid('b'), centerId: 'c_pangyo', name: '개인 레슨 안내', enabled: true,
         script: '엔짐 판교를 이용해 주시는 회원님께 안내 드립니다. 전문 트레이너와 함께하는 일대일 퍼스널 레슨을 프런트에서 상담하실 수 있습니다. 편하신 시간에 문의해 주시기 바랍니다.',
-        voice: { voiceURI: '', rate: 0 }, repeat: 1,
+        voice: { speaker: '' },
         schedule: { type: 'weekly', days: [2, 4], times: ['18:30'], date: '', time: '' }
       }
     ];
   }
 
-  // 예전 저장값(성별로 고르던 시절)을 화자 고르기로 옮겨 심는다.
+  // 예전 저장값을 지금 모양(화자 택1)으로 옮겨 심는다.
+  // WHY: 성별·속도·톤·반복 고르기가 화면에서 사라졌다. 남아 있던 값이 재생에 새어들면
+  //      화면에 안 보이는 설정으로 방송이 나가므로 읽는 순간 버린다.
   function migrate(s) {
     var G2S = { male: 'njonghyun', female: DEFAULT_SPEAKER };
     (s.centers || []).forEach(function (c) {
       var dv = c.defaultVoice || (c.defaultVoice = {});
       if (!speakerById(dv.speaker)) dv.speaker = G2S[dv.gender] || DEFAULT_SPEAKER;
-      delete dv.gender;
+      delete dv.gender; delete dv.voiceURI; delete dv.rate; delete dv.pitch;
     });
-    (s.broadcasts || []).forEach(function (b) { if (b.voice) delete b.voice.gender; });
+    (s.broadcasts || []).forEach(function (b) {
+      var bv = b.voice || (b.voice = {});
+      if (!speakerById(bv.speaker)) bv.speaker = '';   // '' = 센터 기본 목소리를 따른다
+      delete bv.gender; delete bv.voiceURI; delete bv.rate; delete bv.pitch;
+      delete b.repeat;
+    });
     return s;
   }
 
@@ -130,28 +144,21 @@
     if (e.key === LS_LOG && Store.onLogChange) Store.onLogChange();
   });
 
-  /* ---------------- 음성 엔진 (클로바 중계 서버) ---------------- */
-  // 비밀 열쇠는 중계 서버에만 있다. 이 파일이 하는 일은 «문구를 보내고 소리를 받아오는» 것뿐이다.
-  // 중계 서버 주소가 없거나 서버가 응답하지 않으면 이 기기에 설치된 기본 목소리로 내려간다.
+  /* ---------------- 음성 엔진 ----------------
+   * 소리를 실제로 받아오는 일은 tts-adapter.js(NB_TTS) 한 곳이 한다.
+   * 이 블록은 «지금 서버를 쓸 수 있나»를 판단해 화면에 알려주는 역할만 남긴다.
+   * TODO(handoff): 서버 붙이기는 config.js 의 ttsApiBase + tts-adapter.js 만 보면 된다. */
   var Engine = {
     base: '',
     mode: 'device',            // 'clova' | 'device'
     speakers: [],
-    note: '샘플 음성(임시) — 이 기기에 설치된 목소리로 읽습니다.',
+    note: '데모 음성 — 실서비스에선 서버에서 합성됩니다. 지금은 이 기기에 설치된 목소리로 읽습니다.',
     lastError: '',
     probed: false,
     onChange: null,
 
     init: function () {
-      var cfg = global.NB_CONFIG || {};
-      var base = cfg.proxyBase || '';
-      if (cfg.allowQueryOverride !== false) {
-        try {
-          var q = new URLSearchParams(location.search).get('voice');
-          if (q) base = q;
-        } catch (e) { }
-      }
-      this.base = String(base || '').replace(/\/+$/, '');
+      this.base = (global.NB_TTS && NB_TTS.base()) || '';
       return this.base;
     },
 
@@ -168,22 +175,21 @@
       this.init();
       this.probed = true;
       if (!this.base) {
-        this.setMode('device', '샘플 음성(임시) — 이 기기에 설치된 목소리로 읽습니다.');
+        this.setMode('device', '데모 음성 — 실서비스에선 서버에서 합성됩니다. 지금은 이 기기에 설치된 목소리로 읽습니다.');
         return Promise.resolve(this);
       }
-      return fetchWithTimeout(this.base + '/health', { method: 'GET' }, 6000)
-        .then(function (r) { return r.ok ? r.json() : null; })
+      return NB_TTS.health()
         .then(function (j) {
           if (j && j.configured && j.speakers && j.speakers.length) {
             self.speakers = j.speakers;
-            self.setMode('clova', '클로바보이스 — 고품질 안내 음성');
+            self.setMode('clova', '고품질 안내 음성 — 음성 서버에서 받아 읽습니다.');
           } else {
-            self.setMode('device', '샘플 음성(임시) — 음성 열쇠가 아직 서버에 없어 기기 목소리로 읽습니다.');
+            self.setMode('device', '데모 음성 — 서버에 음성 열쇠가 아직 없어 이 기기 목소리로 읽습니다.');
           }
           return self;
         })
         .catch(function () {
-          self.setMode('device', '샘플 음성(임시) — 음성 서버에 연결하지 못해 기기 목소리로 읽습니다.');
+          self.setMode('device', '데모 음성 — 음성 서버에 연결하지 못해 이 기기 목소리로 읽습니다.');
           return self;
         });
     },
@@ -196,47 +202,29 @@
       return Math.max(-5, Math.min(5, Math.round(s)));
     },
 
-    // 문구 한 덩어리를 소리(ArrayBuffer)로 바꿔 온다
+    // 문구 한 덩어리를 소리(ArrayBuffer)로 바꿔 온다 — 실제 호출은 어댑터가 한다
     synth: function (text, opt) {
       var self = this;
       opt = opt || {};
-      var payload = {
+      return NB_TTS.synthesize({
         text: text,
         speaker: opt.speaker || '',
         speed: this.rateToSpeed(opt.rate),
         pitch: Math.max(-5, Math.min(5, Math.round(Number(opt.pitch) || 0))),
-        volume: 0,
         format: 'mp3'
-      };
-      return fetchWithTimeout(this.base + '/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }, 25000).then(function (r) {
-        if (r.ok) return r.arrayBuffer();
-        return r.json().catch(function () { return {}; }).then(function (j) {
-          var e = new Error(j.message || '음성을 만들지 못했습니다.');
-          e.code = j.error || 'upstream_error';
-          e.human = j.message || '음성을 만들지 못했습니다.';
-          self.lastError = e.human;
+      }).then(function (buf) {
+        if (!buf) {
+          // 어댑터가 «이 기기 목소리로 읽어라»로 답한 경우
+          var e = new Error('no-audio'); e.code = 'no_audio'; e.human = '';
           throw e;
-        });
+        }
+        return buf;
+      }, function (e) {
+        self.lastError = (e && e.human) || '음성을 만들지 못했습니다.';
+        throw e;
       });
     }
   };
-
-  function fetchWithTimeout(url, opts, ms) {
-    opts = opts || {};
-    if (!global.fetch) return Promise.reject(new Error('no-fetch'));
-    if (!global.AbortController) return global.fetch(url, opts);
-    var ac = new AbortController();
-    opts.signal = ac.signal;
-    var t = setTimeout(function () { ac.abort(); }, ms || 10000);
-    return global.fetch(url, opts).then(
-      function (r) { clearTimeout(t); return r; },
-      function (e) { clearTimeout(t); throw e; }
-    );
-  }
 
   /* ---------------- 목소리 ---------------- */
   var GENDER_MAP = {
@@ -328,21 +316,19 @@
       // 중계 서버가 없으면 이 기기 목소리로 읽는다 (고른 화자와 같은 성별)
       return this.deviceFallback(sp.gender) || this.ko[0] || null;
     },
-    // 방송 설정 + 센터 기본값 -> 실제 사용할 화자/속도
+    // 방송 설정 + 센터 기본값 -> 실제 사용할 화자
+    // 고르는 축은 «화자 4명 중 하나» 하나뿐이다. 방송이 화자를 안 고르면 센터 기본값을 따른다.
+    // 속도·톤은 화면에서 없앴으므로 항상 기본값으로 고정한다 (저장값이 남아 있어도 무시).
     resolve: function (bcast, center) {
-      var dv = (center && center.defaultVoice) || { speaker: DEFAULT_SPEAKER, voiceURI: '', rate: 1 };
+      var dv = (center && center.defaultVoice) || {};
       var bv = (bcast && bcast.voice) || {};
-      var rate = bv.rate ? bv.rate : (dv.rate || 1);
-      // 톤은 «비어 있으면 센터 기본» — 0 이 «기본 톤»이라는 뜻의 진짜 값이라서 빈 값과 구분한다
-      var pitch = (bv.pitch === undefined || bv.pitch === null || bv.pitch === '')
-        ? Number(dv.pitch || 0) : Number(bv.pitch);
-      var speaker = dv.speaker || DEFAULT_SPEAKER;
-      var uri = bv.voiceURI || '';
-      var v = null;
-      if (uri) v = this.byUri(uri);
-      if (!v && dv.voiceURI) v = this.byUri(dv.voiceURI);
-      if (!v) v = this.bySpeaker(speaker);
-      return { voice: v, rate: rate, pitch: pitch, speaker: speaker, inherited: !bv.voiceURI };
+      var own = speakerById(bv.speaker) ? bv.speaker : '';
+      var speaker = own || (speakerById(dv.speaker) ? dv.speaker : DEFAULT_SPEAKER);
+      return {
+        voice: this.bySpeaker(speaker),
+        rate: DEFAULT_RATE, pitch: DEFAULT_PITCH,
+        speaker: speaker, inherited: !own
+      };
     }
   };
   if (global.speechSynthesis) {
@@ -549,17 +535,30 @@
 
     // 한 덩어리를 읽는다. 클로바 화자면 중계 서버에서 소리를 받아 틀고,
     // 실패하거나 클로바가 아니면 이 기기에 설치된 목소리로 읽는다.
-    speakChunk: function (text, voice, rate, pitch) {
+    // 서버 음성 -> (실패하면) 데모 mp3 -> (없으면) 이 기기에 설치된 목소리 순으로 내려간다.
+    speakChunk: function (text, voice, rate, pitch, speakerId) {
       var self = this;
       if (voice && voice.clova && Engine.mode === 'clova') {
         return this.speakClova(text, voice, rate, pitch).catch(function (e) {
           self.lastVoiceError = (e && e.human) || '고품질 음성을 받지 못해 기본 음성으로 읽었습니다.';
-          var fb = Voices.deviceFallback(voice.gender);
-          if (!fb) return 'error:' + ((e && e.code) || 'clova');
-          return self.speakDevice(text, fb, rate);
+          return self.speakDemoOrDevice(text, voice, rate, speakerId);
         });
       }
-      return this.speakDevice(text, voice, rate);
+      return this.speakDemoOrDevice(text, voice, rate, speakerId);
+    },
+
+    // 미리 합성해 둔 데모 mp3 가 있으면 그것으로 («고른 목소리»가 실제로 들리도록),
+    // 없으면 이 기기에 설치된 한국어 목소리로 읽는다.
+    speakDemoOrDevice: function (text, voice, rate, speakerId) {
+      var self = this;
+      if (!global.NB_TTS || !speakerId) return this.speakDevice(text, voice, rate);
+      return NB_TTS._mock.synthesize({ text: text, speaker: speakerId })
+        .then(function (buf) {
+          if (!buf) return self.speakDevice(text, voice, rate);
+          self.usedDemoAudio = true;
+          return self.playBuffer(buf);
+        })
+        .catch(function () { return self.speakDevice(text, voice, rate); });
     },
 
     speakClova: function (text, voice, rate, pitch) {
@@ -672,11 +671,11 @@
       this.busy = true;
       this.stopped = false;
       this.lastVoiceError = '';
+      this.usedDemoAudio = false;
       this.current = { name: bcast.name, id: bcast.id, at: Date.now() };
       if (this.onState) this.onState(this.current);
       emitBroadcast('start', bcast);
       var r = Voices.resolve(bcast, center);
-      var repeat = Math.max(1, Math.min(3, bcast.repeat || 1));
       var chunks = null, results = [];
       return Cache.prepare(bcast, center)
         .then(function (prep) {
@@ -685,16 +684,14 @@
           return self.chime();
         })
         .then(function () {
+          // 한 번만 읽는다 (반복 재생 기능 없음 — 저장값에 repeat 가 남아 있어도 무시)
           var seq = Promise.resolve();
-          for (var n = 0; n < repeat; n++) {
-            chunks.forEach(function (c) {
-              seq = seq.then(function () {
-                if (self.stopped) { results.push('stopped'); return null; }
-                return self.speakChunk(c, r.voice, r.rate, r.pitch).then(function (w) { results.push(w); });
-              });
+          chunks.forEach(function (c) {
+            seq = seq.then(function () {
+              if (self.stopped) { results.push('stopped'); return null; }
+              return self.speakChunk(c, r.voice, r.rate, r.pitch, r.speaker).then(function (w) { results.push(w); });
             });
-            if (n < repeat - 1) seq = seq.then(function () { return new Promise(function (z) { setTimeout(z, 900); }); });
-          }
+          });
           return seq;
         })
         .then(function () {
@@ -702,7 +699,7 @@
           if (self.onState) self.onState(null);
           emitBroadcast('end', bcast);
           var bad = results.filter(function (w) { return w && w.indexOf('error') === 0; });
-          return { ok: bad.length === 0, chunks: chunks.length, repeat: repeat, results: results, voice: r.voice ? r.voice.name : '(없음)' };
+          return { ok: bad.length === 0, chunks: chunks.length, results: results, demo: !!self.usedDemoAudio, voice: r.voice ? r.voice.name : '(없음)' };
         })
         .catch(function (e) {
           self.busy = false; self.current = null;
@@ -713,7 +710,7 @@
     },
 
     // 미리듣기: 저장 전 대본을 그 자리에서 읽어준다
-    preview: function (text, voice, rate, repeat, pitch) {
+    preview: function (text, voice, rate, pitch, speakerId) {
       var self = this;
       this.arm();
       try { speechSynthesis.cancel(); } catch (e) { }
@@ -722,21 +719,20 @@
       this.busy = true;
       this.stopped = false;
       this.lastVoiceError = '';
+      this.usedDemoAudio = false;
       if (this.onState) this.onState({ name: '미리듣기', id: '__preview', at: Date.now() });
-      var seq = Promise.resolve(), n, rep = Math.max(1, Math.min(3, repeat || 1));
-      for (n = 0; n < rep; n++) {
-        chunks.forEach(function (c) {
-          seq = seq.then(function () {
-            if (self.stopped) return null;
-            return self.speakChunk(c, voice, rate, pitch);
-          });
+      var seq = Promise.resolve();
+      chunks.forEach(function (c) {
+        seq = seq.then(function () {
+          if (self.stopped) return null;
+          return self.speakChunk(c, voice, rate, pitch, speakerId);
         });
-        if (n < rep - 1) seq = seq.then(function () { return new Promise(function (z) { setTimeout(z, 900); }); });
-      }
+      });
       return seq.then(function () {
         self.busy = false;
         if (self.onState) self.onState(null);
-        return { ok: true, chunks: chunks.length, note: self.lastVoiceError || '' };
+        var note = self.lastVoiceError || (Engine.mode !== 'clova' ? '데모 음성 — 실서비스에선 서버에서 합성됩니다.' : '');
+        return { ok: true, chunks: chunks.length, demo: !!self.usedDemoAudio, note: note };
       });
     }
   };
@@ -870,7 +866,7 @@
     Store: Store, Voices: Voices, Player: Player, Cache: Cache, Log: Log, Scheduler: Scheduler, Engine: Engine,
     splitScript: splitScript, occurrences: occurrences, nextRun: nextRun, scheduleLabel: scheduleLabel,
     humanGap: humanGap, isPastOnce: isPastOnce,
-    SPEAKERS: SPEAKERS, DEFAULT_SPEAKER: DEFAULT_SPEAKER, speakerById: speakerById,
+    SPEAKERS: SPEAKERS, DEFAULT_SPEAKER: DEFAULT_SPEAKER, speakerById: speakerById, speakerLine: speakerLine,
     KEYS: { state: LS, log: LS_LOG, fired: LS_FIRED }
   };
 })(window);

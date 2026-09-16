@@ -24,52 +24,25 @@
 
 <main class="wrap">
 
-  <section class="panel" id="vsPanel" data-testid="panel-voice-samples">
+  <!-- 목소리 고르기 — 카드 4장이 곧 센터 기본 목소리다 (같은 부품이 방송 편집에서도 쓰인다) -->
+  <section class="panel" id="vsPanel" data-testid="panel-default-voice">
     <div class="panel-h">
       <h2>방송 목소리</h2>
       <div class="sp"></div>
-      <span class="tag cta" data-testid="vs-badge">클로바보이스 실제 음성</span>
+      <span class="tag" id="voiceCount" data-testid="voice-count">목소리 확인 중</span>
     </div>
     <div class="field">
-      <label class="fl">읽을 문안</label>
+      <label class="fl">이 센터의 기본 목소리</label>
+      <p class="pickline" id="defSpeaker" data-testid="def-speaker">아라 · 여성 · 차분한 상담·안내 톤</p>
+    </div>
+    <div class="field">
+      <label class="fl">들어볼 문안</label>
       <div class="seg" id="vsScript" data-testid="vs-script"></div>
     </div>
     <p class="vs-text" id="vsText" data-testid="vs-text"></p>
-    <div class="vs-list" id="vsList" data-testid="vs-list"></div>
-    <p class="hintline" data-testid="vs-hint">네 가지 목소리를 같은 문안으로 들어보고 «이 목소리로 설정»을 누르면 그 목소리로 방송이 나갑니다. 미리 만들어 둔 소리라 바로 나옵니다.</p>
-    <p class="hintline" data-testid="vs-notice">미리듣기는 실제 클로바 음성입니다. 예약 방송 음성 적용은 중계 서버 연결 후 반영됩니다.</p>
-  </section>
-
-  <section class="panel" data-testid="panel-default-voice">
-    <div class="panel-h">
-      <h2>센터 기본 목소리</h2>
-      <div class="sp"></div>
-      <span class="tag" id="voiceCount" data-testid="voice-count">목소리 확인 중</span>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label class="fl">고른 목소리</label>
-        <p class="pickline" id="defSpeaker" data-testid="def-speaker">아라 · 여성 · 차분한 안내 톤</p>
-      </div>
-      <div class="field">
-        <label class="fl" id="defVoiceLabel">화자</label>
-        <select class="inp" id="defVoice" data-testid="def-voice"></select>
-      </div>
-      <div class="field">
-        <label class="fl">말하기 속도 <b id="defRateV" style="color:var(--link)">1.00</b></label>
-        <input class="inp" type="range" id="defRate" data-testid="def-rate" min="0.6" max="1.6" step="0.05" style="padding:0">
-      </div>
-      <div class="field">
-        <label class="fl">목소리 톤 <b id="defPitchV" style="color:var(--link)">기본</b></label>
-        <input class="inp" type="range" id="defPitch" data-testid="def-pitch" min="-5" max="5" step="1" style="padding:0">
-      </div>
-    </div>
+    <div id="defVoicePick"></div>
     <p class="hintline" id="voiceEngine" data-testid="voice-engine">음성 확인 중…</p>
-    <div class="row" style="gap:8px">
-      <button class="btn" id="defPreview" data-testid="def-preview">기본 목소리 들어보기</button>
-      <button class="btn btn-ghost" id="defSave" data-testid="def-save">센터 기본값으로 저장</button>
-    </div>
-    <p class="hintline">목소리는 위 «방송 목소리»에서 고릅니다. 여기서 정한 속도·톤이 모든 방송의 기본값이고, 방송마다 따로 지정하면 그 방송만 덮어씁니다.</p>
+    <p class="hintline" data-testid="vs-notice">네 목소리를 같은 문안으로 들어보고 «이 목소리로 설정»을 누르면 그 목소리가 이 센터 모든 방송의 기본값이 됩니다. 고르는 즉시 저장됩니다. 방송 하나만 다른 목소리로 내보내려면 그 방송을 수정해 따로 고르세요.</p>
   </section>
 
   <section>
@@ -113,31 +86,9 @@
       <p class="hintline">길게 쓰셔도 됩니다. 긴 대본은 문장 단위로 나눠 끊김 없이 이어 읽습니다. 숫자는 「삼십 분」처럼 한글로 적으면 더 자연스럽습니다.</p>
     </div>
 
-    <div class="row">
-      <div class="field">
-        <label class="fl" for="edVoice" id="edVoiceLabel">화자 직접 지정 (선택)</label>
-        <select class="inp" id="edVoice" data-testid="ed-voice"></select>
-        <p class="hintline">비워 두면 «방송 목소리»에서 고른 목소리로 나갑니다.</p>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="field">
-        <label class="fl">말하기 속도 <b id="edRateV" style="color:var(--link)">기본</b></label>
-        <input class="inp" type="range" id="edRate" data-testid="ed-rate" min="0.6" max="1.6" step="0.05" style="padding:0">
-      </div>
-      <div class="field">
-        <label class="fl">목소리 톤 <b id="edPitchV" style="color:var(--link)">기본</b></label>
-        <input class="inp" type="range" id="edPitch" data-testid="ed-pitch" min="-5" max="5" step="1" style="padding:0">
-      </div>
-      <div class="field">
-        <label class="fl">반복 재생</label>
-        <div class="seg" id="edRepeat" data-testid="ed-repeat">
-          <button type="button" data-v="1">1회</button>
-          <button type="button" data-v="2">2회</button>
-          <button type="button" data-v="3">3회</button>
-        </div>
-      </div>
+    <div class="field">
+      <label class="fl">이 방송의 목소리</label>
+      <div id="edVoicePick"></div>
     </div>
 
     <div class="field">
@@ -188,7 +139,9 @@
 </div>
 
 <script src="config.js"></script>
+<script src="tts-adapter.js"></script>
 <script src="core.js"></script>
+<script src="voice-picker.js"></script>
 <script src="admin.js"></script>
 <script src="voice-samples/samples.js"></script>
 <script src="voice-samples/preview.js"></script>

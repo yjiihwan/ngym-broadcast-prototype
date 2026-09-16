@@ -245,7 +245,7 @@ input[type=range].inp::-moz-range-thumb{width:26px;height:26px;border:2px solid 
   .row>.field{flex:1 1 100%}
 }
 
-/* ── 방송 목소리 고르기 (클로바보이스 실음성 샘플 + 택1) ──────────── */
+/* ── 목소리 고르기 카드 (화면 세 곳이 같은 부품을 쓴다 — voice-picker.js) ── */
 .vs-text{
   background:var(--surface-sunken);border:1px solid var(--border);border-radius:var(--r-sm);
   padding:12px 14px;margin:0 0 14px;color:var(--text);font-size:14px;line-height:1.6;
@@ -257,8 +257,7 @@ input[type=range].inp::-moz-range-thumb{width:26px;height:26px;border:2px solid 
 }
 .vs-card-h{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px;min-width:0;min-height:29px}
 .vs-name{font-size:15px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vs-note{color:var(--text);font-size:13px;margin:0 0 2px;min-height:20px}
-.vs-hz{color:var(--text-muted);font-size:12.5px;margin:0 0 12px;min-height:18px}
+.vs-note{color:var(--text);font-size:13px;line-height:1.5;margin:0 0 12px;min-height:40px}
 .vs-play{width:100%}
 .vs-pick{width:100%;margin-top:8px}
 /* 고른 카드 — 색만으로 구분하지 않는다: 굵은 테두리 + ✓ 배지 + 버튼 글자까지 같이 바뀐다 */
@@ -267,6 +266,22 @@ input[type=range].inp::-moz-range-thumb{width:26px;height:26px;border:2px solid 
 .vs-card.is-on .vs-badge{display:inline-flex}
 .vs-pick.is-on{background:var(--surface);border-color:var(--cta);color:var(--text);font-weight:700}
 .vs-pick.is-on:hover{background:var(--surface-rose);border-color:var(--cta);color:var(--text)}
+/* 안 고른 상태에서 «지금 나갈 목소리»(센터 기본)를 점선으로만 귀띔한다 — 선택됨과 헷갈리지 않게 */
+.vs-card.is-ghost{border-style:dashed;border-color:var(--border-strong)}
+/* 고른 목소리 / 센터 기본 따름 한 줄 안내 */
+.vp-state{
+  margin:12px 0 0;padding:10px 14px;border-radius:var(--r-sm);
+  background:var(--surface-sunken);border:1px solid var(--border);
+  color:var(--text);font-size:13.5px;line-height:1.6;
+}
+.vp-demo{margin:10px 0 0;color:var(--text-muted);font-size:12.5px;line-height:1.5}
+.linkbtn{
+  background:none;border:0;padding:0;margin-left:2px;
+  color:var(--link);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;
+}
+.linkbtn:hover{opacity:.75}
+/* 편집 모달은 폭이 좁다 — 카드를 두 줄로 접어 글자가 눌리지 않게 한다 */
+.modal .vs-list{grid-template-columns:repeat(2,minmax(0,1fr))}
 /* 센터 기본 목소리 패널에 되비추는 «고른 목소리» 한 줄 */
 .pickline{
   display:flex;align-items:center;margin:0;min-height:42px;
