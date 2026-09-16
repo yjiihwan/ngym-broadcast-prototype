@@ -21,7 +21,7 @@
     BUILDS: [
       {
         os: 'win',
-        icon: '🪟',
+        icon: 'win',
         osName: '윈도우',
         fileName: 'Enzyme-Broadcast-Setup-' + VERSION + '.exe',
         url: fileOf('Enzyme-Broadcast-Setup-' + VERSION + '.exe'),
@@ -31,7 +31,7 @@
       },
       {
         os: 'mac',
-        icon: '🍎',
+        icon: 'mac',
         osName: '맥',
         fileName: 'Enzyme-Broadcast-' + VERSION + '-universal.dmg',
         url: fileOf('Enzyme-Broadcast-' + VERSION + '-universal.dmg'),

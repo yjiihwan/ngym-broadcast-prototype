@@ -279,7 +279,8 @@ input[type=range].inp::-moz-range-thumb{width:26px;height:26px;border:2px solid 
 }
 .dl-card-h{display:flex;align-items:center;gap:10px;margin-bottom:14px;min-width:0}
 .dl-card-h h3{font-size:17px;min-width:0}
-.dl-ic{font-size:26px;line-height:1;flex:0 0 auto}
+.dl-ic{display:inline-flex;align-items:center;flex:0 0 auto;color:var(--cta)}
+.dl-ic svg{display:block}
 .dl-spec{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 12px;font-size:13.5px}
 .dl-spec dt{color:var(--text-muted);white-space:nowrap}
 .dl-spec dd{margin:0;color:var(--text);min-width:0}
