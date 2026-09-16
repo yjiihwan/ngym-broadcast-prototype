@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>엔짐 이용안내 자동방송 — PC 앱 다운로드</title>
+<meta name="theme-color" content="#ffffff">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <span class="brand-mark">ENZYME</span>
+      <span class="brand-sub">이용안내 자동방송</span>
+    </div>
+    <div class="topbar-sp"></div>
+    <a class="btn btn-sm" href="index.html" data-testid="nav-admin">관리 화면</a>
+    <a class="btn btn-cta" href="onair.html" target="_blank" rel="noopener" data-testid="open-onair">송출 화면 열기</a>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="panel">
+    <div class="panel-h">
+      <h2 data-testid="dl-title">PC 앱 다운로드</h2>
+    </div>
+    <p class="hintline" data-testid="dl-lead" style="font-size:14px">
+      방송 기능은 <strong>웹에서 전부 그대로 쓸 수 있습니다.</strong>
+      이 앱은 방송이 나가는 동안 <strong>틀어 둔 음악을 자동으로 멈췄다가 다시 켜는 기능</strong>이 필요할 때만 설치하세요.
+    </p>
+    <div class="dl-note" data-testid="dl-mobile-note">
+      태블릿·스마트폰은 운영체제 제약으로 이 기능을 지원하지 않습니다. PC(윈도우·맥)에서만 동작합니다.
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h">
+      <h2>내려받기</h2>
+      <div class="sp"></div>
+      <span class="tag" data-testid="dl-version">최신 판</span>
+    </div>
+    <div class="dl-grid" id="dlGrid" data-testid="dl-grid"></div>
+  </section>
+
+  <section class="panel" id="dlMacPanel" data-testid="dl-mac-panel" hidden>
+    <details class="dl-details" data-testid="dl-mac-details">
+      <summary>맥에서 «확인되지 않은 개발자» 경고가 뜰 때</summary>
+      <div class="dl-details-b">
+        <p class="hintline" style="font-size:13.5px">
+          아직 애플 인증 절차를 밟기 전이라, 맥에서 처음 열 때 «확인할 수 없기 때문에 열 수 없습니다» 경고가 뜹니다.
+          아래 순서대로 한 번만 해 주시면 다음부터는 그냥 열립니다.
+        </p>
+        <ol class="dl-steps">
+          <li>내려받은 파일을 두 번 눌러 «엔짐 자동방송» 을 응용 프로그램 폴더로 끌어다 넣습니다.</li>
+          <li>응용 프로그램 폴더에서 «엔짐 자동방송» 을 <strong>마우스 오른쪽 버튼(또는 컨트롤+클릭)</strong>으로 누르고 <strong>«열기»</strong> 를 고릅니다.</li>
+          <li>다시 뜬 창에서 한 번 더 <strong>«열기»</strong> 를 누릅니다. 이 과정은 처음 한 번뿐입니다.</li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <div class="panel-h">
+      <h2>설치한 다음</h2>
+    </div>
+    <ol class="dl-steps" data-testid="dl-after">
+      <li><strong>맥은 권한을 한 번 켜 주세요.</strong> 시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용 에서 «엔짐 자동방송» 을 켜면 음악 멈춤이 동작합니다. 켠 뒤에는 앱을 껐다 켜 주세요.</li>
+      <li><strong>앱은 화면 위쪽(맥) 또는 오른쪽 아래(윈도우) 작은 아이콘으로 남습니다.</strong> 창을 닫아도 예약한 방송은 그대로 나갑니다. 완전히 끄려면 아이콘을 눌러 «종료» 를 고르세요.</li>
+      <li><strong>음악 자동 멈춤은 켜고 끌 수 있습니다.</strong> 같은 아이콘 메뉴에서 «방송할 때 음악 자동 멈춤», «방송이 끝나면 다시 재생» 을 각각 켜고 끌 수 있고, «지금 한 번 시험해 보기» 로 바로 확인할 수 있습니다.</li>
+    </ol>
+  </section>
+
+</main>
+
+<script src="desktop-releases.js"></script>
+<script src="download.js"></script>
+</body>
+</html>

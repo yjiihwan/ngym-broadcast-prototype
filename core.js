@@ -327,6 +327,16 @@
 
   /* ---------------- 대본 쪼개기 (긴 대본 대응) ---------------- */
   // 크롬은 한 번에 너무 긴 문장을 읽다가 중간에 끊기므로 문장 단위로 나눠 순서대로 읽는다.
+  // PC 앱(엔짐 자동방송 데스크톱)에 방송 시작/종료를 알린다.
+  // 브라우저에서는 듣는 쪽이 없어 아무 일도 일어나지 않는다 — 웹 동작은 그대로다.
+  function emitBroadcast(kind, bcast) {
+    try {
+      global.dispatchEvent(new CustomEvent('nb:broadcast-' + kind, {
+        detail: { name: (bcast && bcast.name) || '', id: (bcast && bcast.id) || '' }
+      }));
+    } catch (e) { }
+  }
+
   function splitScript(text, max) {
     max = max || 80;
     var norm = String(text || '').replace(/\r/g, '').replace(/[ \t]+/g, ' ').trim();
@@ -634,6 +644,7 @@
       this.lastVoiceError = '';
       this.current = { name: bcast.name, id: bcast.id, at: Date.now() };
       if (this.onState) this.onState(this.current);
+      emitBroadcast('start', bcast);
       var r = Voices.resolve(bcast, center);
       var repeat = Math.max(1, Math.min(3, bcast.repeat || 1));
       var chunks = null, results = [];
@@ -659,12 +670,14 @@
         .then(function () {
           self.busy = false; self.current = null;
           if (self.onState) self.onState(null);
+          emitBroadcast('end', bcast);
           var bad = results.filter(function (w) { return w && w.indexOf('error') === 0; });
           return { ok: bad.length === 0, chunks: chunks.length, repeat: repeat, results: results, voice: r.voice ? r.voice.name : '(없음)' };
         })
         .catch(function (e) {
           self.busy = false; self.current = null;
           if (self.onState) self.onState(null);
+          emitBroadcast('end', bcast);
           return { ok: false, why: String(e) };
         });
     },
