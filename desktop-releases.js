@@ -35,7 +35,7 @@
         osName: '맥',
         fileName: 'Enzyme-Broadcast-' + VERSION + '-universal.dmg',
         url: fileOf('Enzyme-Broadcast-' + VERSION + '-universal.dmg'),
-        size: '200.1 MB',
+        size: '200.2 MB',
         requires: 'macOS 11 빅서 이상 · 애플 실리콘과 인텔 모두',
         note: '인텔 맥과 애플 실리콘 맥에서 같은 파일을 씁니다.'
       }
