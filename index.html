@@ -26,7 +26,7 @@
 
   <section class="panel" id="vsPanel" data-testid="panel-voice-samples">
     <div class="panel-h">
-      <h2>목소리 미리듣기</h2>
+      <h2>방송 목소리</h2>
       <div class="sp"></div>
       <span class="tag cta" data-testid="vs-badge">클로바보이스 실제 음성</span>
     </div>
@@ -36,7 +36,8 @@
     </div>
     <p class="vs-text" id="vsText" data-testid="vs-text"></p>
     <div class="vs-list" id="vsList" data-testid="vs-list"></div>
-    <p class="hintline">네 가지 목소리를 같은 문안으로 들어보고 마음에 드는 하나를 골라주세요. 미리 만들어 둔 소리라 바로 나옵니다.</p>
+    <p class="hintline" data-testid="vs-hint">네 가지 목소리를 같은 문안으로 들어보고 «이 목소리로 설정»을 누르면 그 목소리로 방송이 나갑니다. 미리 만들어 둔 소리라 바로 나옵니다.</p>
+    <p class="hintline" data-testid="vs-notice">미리듣기는 실제 클로바 음성입니다. 예약 방송 음성 적용은 중계 서버 연결 후 반영됩니다.</p>
   </section>
 
   <section class="panel" data-testid="panel-default-voice">
@@ -47,11 +48,8 @@
     </div>
     <div class="row">
       <div class="field">
-        <label class="fl">성별</label>
-        <div class="seg" id="defGender" data-testid="def-gender">
-          <button type="button" data-v="female">여성</button>
-          <button type="button" data-v="male">남성</button>
-        </div>
+        <label class="fl">고른 목소리</label>
+        <p class="pickline" id="defSpeaker" data-testid="def-speaker">아라 · 여성 · 차분한 안내 톤</p>
       </div>
       <div class="field">
         <label class="fl" id="defVoiceLabel">화자</label>
@@ -71,7 +69,7 @@
       <button class="btn" id="defPreview" data-testid="def-preview">기본 목소리 들어보기</button>
       <button class="btn btn-ghost" id="defSave" data-testid="def-save">센터 기본값으로 저장</button>
     </div>
-    <p class="hintline">여기서 정한 목소리가 모든 방송의 기본값입니다. 방송마다 따로 지정하면 그 방송만 덮어씁니다.</p>
+    <p class="hintline">목소리는 위 «방송 목소리»에서 고릅니다. 여기서 정한 속도·톤이 모든 방송의 기본값이고, 방송마다 따로 지정하면 그 방송만 덮어씁니다.</p>
   </section>
 
   <section>
@@ -117,16 +115,9 @@
 
     <div class="row">
       <div class="field">
-        <label class="fl">목소리</label>
-        <div class="seg" id="edGender" data-testid="ed-gender">
-          <button type="button" data-v="">센터 기본</button>
-          <button type="button" data-v="female">여성</button>
-          <button type="button" data-v="male">남성</button>
-        </div>
-      </div>
-      <div class="field">
         <label class="fl" for="edVoice" id="edVoiceLabel">화자 직접 지정 (선택)</label>
         <select class="inp" id="edVoice" data-testid="ed-voice"></select>
+        <p class="hintline">비워 두면 «방송 목소리»에서 고른 목소리로 나갑니다.</p>
       </div>
     </div>
 

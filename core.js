@@ -15,11 +15,26 @@
   function hash(str) { var h = 0x811c9dc5, i; for (i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0; } return h.toString(36); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
+  /* ---------------- 방송 목소리 4종 (정본) ---------------- */
+  // 화면의 목소리 카드 · 미리듣기 mp3 · 실제 송출 화자가 모두 이 표 하나를 본다.
+  // hz 는 미리듣기 mp3 에서 실제로 잰 기본 주파수 범위다.
+  var SPEAKERS = [
+    { id: 'nara_call', name: '아라', gender: 'female', tone: '차분한 상담·안내 톤', hz: '226~258Hz' },
+    { id: 'nminyoung', name: '민영', gender: 'female', tone: '밝고 높은 톤', hz: '291~333Hz' },
+    { id: 'njonghyun', name: '종현', gender: 'male', tone: '부드러운 중저음', hz: '160~183Hz' },
+    { id: 'nsinu', name: '신우', gender: 'male', tone: '낮고 묵직한 톤', hz: '120~123Hz' }
+  ];
+  var DEFAULT_SPEAKER = 'nara_call';
+  function speakerById(id) {
+    for (var i = 0; i < SPEAKERS.length; i++) if (SPEAKERS[i].id === id) return SPEAKERS[i];
+    return null;
+  }
+
   /* ---------------- 기본 데이터 ---------------- */
   var SEED_CENTERS = [
-    { id: 'c_gangnam', name: '엔짐 강남', defaultVoice: { gender: 'female', voiceURI: '', rate: 1 } },
-    { id: 'c_pangyo', name: '엔짐 판교', defaultVoice: { gender: 'male', voiceURI: '', rate: 0.95 } },
-    { id: 'c_songdo', name: '엔짐 송도', defaultVoice: { gender: 'female', voiceURI: '', rate: 1.05 } }
+    { id: 'c_gangnam', name: '엔짐 강남', defaultVoice: { speaker: DEFAULT_SPEAKER, voiceURI: '', rate: 1 } },
+    { id: 'c_pangyo', name: '엔짐 판교', defaultVoice: { speaker: 'njonghyun', voiceURI: '', rate: 0.95 } },
+    { id: 'c_songdo', name: '엔짐 송도', defaultVoice: { speaker: DEFAULT_SPEAKER, voiceURI: '', rate: 1.05 } }
   ];
 
   function seedBroadcasts() {
@@ -27,28 +42,40 @@
       {
         id: uid('b'), centerId: 'c_gangnam', name: '마감 30분 전 안내', enabled: true,
         script: '회원님, 안녕하세요. 엔짐 강남입니다. 금일 영업 종료 삼십 분 전입니다. 이용을 마치신 회원님께서는 샤워실과 라커룸 이용에 참고해 주시기 바랍니다. 오늘도 엔짐을 찾아주셔서 감사합니다.',
-        voice: { gender: '', voiceURI: '', rate: 0 }, repeat: 1,
+        voice: { voiceURI: '', rate: 0 }, repeat: 1,
         schedule: { type: 'weekly', days: [1, 2, 3, 4, 5], times: ['21:30'], date: '', time: '' }
       },
       {
         id: uid('b'), centerId: 'c_gangnam', name: '기구 정리 안내', enabled: true,
         script: '회원님께 안내 말씀 드립니다. 사용하신 덤벨과 원판은 제자리에 정리해 주시고, 벤치와 매트는 비치된 클리너로 닦아주시기 바랍니다. 쾌적한 운동 환경을 위해 협조해 주셔서 감사합니다.',
-        voice: { gender: 'male', voiceURI: '', rate: 0.95 }, repeat: 1,
+        voice: { voiceURI: '', rate: 0.95 }, repeat: 1,
         schedule: { type: 'weekly', days: [1, 2, 3, 4, 5, 6, 0], times: ['12:00', '19:00'], date: '', time: '' }
       },
       {
         id: uid('b'), centerId: 'c_gangnam', name: '주차 등록 안내', enabled: false,
         script: '주차 차량 안내 말씀 드립니다. 차량을 가지고 오신 회원님께서는 프런트에서 주차 등록을 진행해 주시기 바랍니다. 미등록 차량은 주차 요금이 부과될 수 있습니다.',
-        voice: { gender: '', voiceURI: '', rate: 0 }, repeat: 2,
+        voice: { voiceURI: '', rate: 0 }, repeat: 2,
         schedule: { type: 'once', days: [], times: [], date: ymd(new Date()), time: '18:00' }
       },
       {
         id: uid('b'), centerId: 'c_pangyo', name: '개인 레슨 안내', enabled: true,
         script: '엔짐 판교를 이용해 주시는 회원님께 안내 드립니다. 전문 트레이너와 함께하는 일대일 퍼스널 레슨을 프런트에서 상담하실 수 있습니다. 편하신 시간에 문의해 주시기 바랍니다.',
-        voice: { gender: '', voiceURI: '', rate: 0 }, repeat: 1,
+        voice: { voiceURI: '', rate: 0 }, repeat: 1,
         schedule: { type: 'weekly', days: [2, 4], times: ['18:30'], date: '', time: '' }
       }
     ];
+  }
+
+  // 예전 저장값(성별로 고르던 시절)을 화자 고르기로 옮겨 심는다.
+  function migrate(s) {
+    var G2S = { male: 'njonghyun', female: DEFAULT_SPEAKER };
+    (s.centers || []).forEach(function (c) {
+      var dv = c.defaultVoice || (c.defaultVoice = {});
+      if (!speakerById(dv.speaker)) dv.speaker = G2S[dv.gender] || DEFAULT_SPEAKER;
+      delete dv.gender;
+    });
+    (s.broadcasts || []).forEach(function (b) { if (b.voice) delete b.voice.gender; });
+    return s;
   }
 
   function freshState() {
@@ -64,7 +91,7 @@
         var raw = localStorage.getItem(LS);
         if (raw) {
           var s = JSON.parse(raw);
-          if (s && s.centers && s.broadcasts) { this.state = s; return this.state; }
+          if (s && s.centers && s.broadcasts) { this.state = migrate(s); return this.state; }
         }
       } catch (e) { /* 손상된 저장값은 무시하고 초기화 */ }
       this.state = freshState();
@@ -269,50 +296,53 @@
       for (var i = 0; i < this.ko.length; i++) if (this.ko[i].uri === uri) return this.ko[i];
       return null;
     },
-    // 클로바가 실패했을 때 대신 읽어줄 이 기기의 목소리 하나
+    // 이 기기에 설치된 목소리 중 그 성별로 가장 무난한 하나
+    // (클로바가 실패했을 때 대신 읽어줄 목소리이기도 하다)
     deviceFallback: function (gender) {
-      var list = this.deviceKo, i;
+      var list = this.deviceKo, i, j;
       if (!list.length) return null;
-      for (i = 0; i < list.length; i++) if (list[i].gender === gender && !list[i].age) return list[i];
-      for (i = 0; i < list.length; i++) if (!list[i].age) return list[i];
-      return list[0];
-    },
-    // 성별만 골랐을 때 그 기기에서 가장 무난한 화자 하나를 고른다
-    pickGender: function (gender) {
-      var i, j;
-      // 클로바 목록에서는 «안내방송 추천» 표시가 붙은 화자를 먼저 고른다
-      if (this.ko.length && this.ko[0].clova) {
-        for (j = 0; j < this.ko.length; j++) if (this.ko[j].gender === gender && this.ko[j].recommended) return this.ko[j];
-        for (j = 0; j < this.ko.length; j++) if (this.ko[j].gender === gender) return this.ko[j];
-        for (j = 0; j < this.ko.length; j++) if (this.ko[j].recommended) return this.ko[j];
-        return this.ko[0] || null;
-      }
       var pref = gender === 'male'
         ? ['eddy', 'reed', 'rocko', 'injoon']
         : ['yuna', '유나', 'sunhi', 'heami', 'shelley', 'flo'];
       for (i = 0; i < pref.length; i++)
-        for (j = 0; j < this.ko.length; j++)
-          if (baseName(this.ko[j].name) === pref[i]) return this.ko[j];
-      for (j = 0; j < this.ko.length; j++) if (this.ko[j].gender === gender && !this.ko[j].age) return this.ko[j];
-      for (j = 0; j < this.ko.length; j++) if (this.ko[j].gender === gender) return this.ko[j];
-      return this.ko[0] || null;
+        for (j = 0; j < list.length; j++)
+          if (baseName(list[j].name) === pref[i]) return list[j];
+      for (i = 0; i < list.length; i++) if (list[i].gender === gender && !list[i].age) return list[i];
+      for (i = 0; i < list.length; i++) if (list[i].gender === gender) return list[i];
+      for (i = 0; i < list.length; i++) if (!list[i].age) return list[i];
+      return list[0];
+    },
+    // 형이 카드에서 고른 «방송 목소리» -> 지금 엔진에서 실제로 쓸 화자
+    bySpeaker: function (id) {
+      var sp = speakerById(id) || speakerById(DEFAULT_SPEAKER);
+      var j;
+      if (this.ko.length && this.ko[0].clova) {
+        // 중계 서버에 고른 화자가 있으면 그대로 쓴다
+        for (j = 0; j < this.ko.length; j++) if (this.ko[j].uri === sp.id) return this.ko[j];
+        // 없으면 같은 성별의 안내방송 추천 화자로 내려간다
+        for (j = 0; j < this.ko.length; j++) if (this.ko[j].gender === sp.gender && this.ko[j].recommended) return this.ko[j];
+        for (j = 0; j < this.ko.length; j++) if (this.ko[j].gender === sp.gender) return this.ko[j];
+        for (j = 0; j < this.ko.length; j++) if (this.ko[j].recommended) return this.ko[j];
+        return this.ko[0] || null;
+      }
+      // 중계 서버가 없으면 이 기기 목소리로 읽는다 (고른 화자와 같은 성별)
+      return this.deviceFallback(sp.gender) || this.ko[0] || null;
     },
     // 방송 설정 + 센터 기본값 -> 실제 사용할 화자/속도
     resolve: function (bcast, center) {
-      var dv = (center && center.defaultVoice) || { gender: 'female', voiceURI: '', rate: 1 };
+      var dv = (center && center.defaultVoice) || { speaker: DEFAULT_SPEAKER, voiceURI: '', rate: 1 };
       var bv = (bcast && bcast.voice) || {};
       var rate = bv.rate ? bv.rate : (dv.rate || 1);
       // 톤은 «비어 있으면 센터 기본» — 0 이 «기본 톤»이라는 뜻의 진짜 값이라서 빈 값과 구분한다
       var pitch = (bv.pitch === undefined || bv.pitch === null || bv.pitch === '')
         ? Number(dv.pitch || 0) : Number(bv.pitch);
+      var speaker = dv.speaker || DEFAULT_SPEAKER;
       var uri = bv.voiceURI || '';
-      var gender = bv.gender || '';
       var v = null;
       if (uri) v = this.byUri(uri);
-      if (!v && gender) v = this.pickGender(gender);
       if (!v && dv.voiceURI) v = this.byUri(dv.voiceURI);
-      if (!v) v = this.pickGender(dv.gender || 'female');
-      return { voice: v, rate: rate, pitch: pitch, inherited: !bv.gender && !bv.voiceURI };
+      if (!v) v = this.bySpeaker(speaker);
+      return { voice: v, rate: rate, pitch: pitch, speaker: speaker, inherited: !bv.voiceURI };
     }
   };
   if (global.speechSynthesis) {
@@ -840,6 +870,7 @@
     Store: Store, Voices: Voices, Player: Player, Cache: Cache, Log: Log, Scheduler: Scheduler, Engine: Engine,
     splitScript: splitScript, occurrences: occurrences, nextRun: nextRun, scheduleLabel: scheduleLabel,
     humanGap: humanGap, isPastOnce: isPastOnce,
+    SPEAKERS: SPEAKERS, DEFAULT_SPEAKER: DEFAULT_SPEAKER, speakerById: speakerById,
     KEYS: { state: LS, log: LS_LOG, fired: LS_FIRED }
   };
 })(window);

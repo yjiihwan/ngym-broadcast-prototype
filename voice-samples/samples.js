@@ -1,31 +1,6 @@
 /* 자동 생성 파일 — 직접 고치지 마세요. 문안은 scripts.txt 에서 고칩니다. */
+/* 화자 표는 여기가 아니라 core.js 의 SPEAKERS 한 곳이 정본입니다. */
 window.NB_SAMPLES={
-  "speakers": [
-    {
-      "id": "nara_call",
-      "name": "아라",
-      "gender": "여성",
-      "note": "상담·안내 전용 톤"
-    },
-    {
-      "id": "nminyoung",
-      "name": "민영",
-      "gender": "여성",
-      "note": "밝고 높은 톤"
-    },
-    {
-      "id": "njonghyun",
-      "name": "종현",
-      "gender": "남성",
-      "note": "부드러운 중저음"
-    },
-    {
-      "id": "nsinu",
-      "name": "신우",
-      "gender": "남성",
-      "note": "낮고 묵직한 톤"
-    }
-  ],
   "scripts": [
     {
       "no": "1",
