@@ -233,3 +233,25 @@ input[type=range].inp::-moz-range-thumb{width:26px;height:26px;border:2px solid 
   .oa-next{padding:13px 16px;width:100%}
   .row>.field{flex:1 1 100%}
 }
+
+/* ── 목소리 미리듣기 (클로바보이스 실음성 샘플) ───────────────────── */
+.vs-text{
+  background:var(--surface-sunken);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:12px 14px;margin:0 0 14px;color:var(--text);font-size:14px;line-height:1.6;
+}
+.vs-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.vs-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px;min-width:0;
+}
+.vs-card-h{display:flex;align-items:center;gap:8px;margin-bottom:6px;min-width:0}
+.vs-name{font-size:15px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vs-note{color:var(--text-muted);font-size:13px;margin:0 0 12px;min-height:40px}
+.vs-play{width:100%}
+@media (max-width:900px){
+  .vs-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .vs-note{min-height:0}
+}
+@media (max-width:640px){
+  .vs-card{padding:13px}
+}
