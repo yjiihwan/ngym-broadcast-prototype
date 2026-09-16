@@ -496,6 +496,9 @@
     busy: false,
     stopped: false,
     current: null,
+    // 끊긴 재생이 뒤늦게 끝나며 «지금» 나가는 방송의 배너·상태를 지우지 않게 하는 세대 번호
+    gen: 0,
+    emitted: false,   // PC 앱에 'start' 를 알린 상태인가 (짝이 되는 'end' 를 꼭 한 번만 보내려고)
     audioNode: null,
     audioEl: null,
     lastVoiceError: '',
@@ -678,6 +681,9 @@
     },
 
     stop: function () {
+      // 세대를 올려, 이미 떠난 재생의 뒷정리가 다음 재생의 배너를 지우지 못하게 한다
+      this.gen++;
+      var was = this.current;
       try { speechSynthesis.cancel(); } catch (e) { }
       // 클로바 음성(파일 재생)도 같이 멈춘다
       try { if (this.audioNode) { this.audioNode.onended = null; this.audioNode.stop(0); } } catch (e) { }
@@ -688,6 +694,8 @@
       clearInterval(this.resumeTimer); this.resumeTimer = null;
       this.busy = false; this.current = null;
       if (this.onState) this.onState(null);
+      // 방송이 중간에 끊겼어도 PC 앱은 음악을 되살려야 한다 ('start' 를 보냈으면 'end' 도 반드시 한 번)
+      if (this.emitted) { this.emitted = false; emitBroadcast('end', was); }
     },
 
     // 방송 한 건 재생 (알림음 -> 대본 -> 반복)
@@ -695,13 +703,17 @@
       opts = opts || {};
       var self = this;
       if (this.busy && !opts.force) return Promise.resolve({ ok: false, why: 'busy' });
+      this.gen++; var gen = this.gen;
       this.busy = true;
       this.stopped = false;
       this.lastVoiceError = '';
       this.usedDemoAudio = false;
       this.current = { name: bcast.name, id: bcast.id, at: Date.now() };
       if (this.onState) this.onState(this.current);
+      this.emitted = true;
       emitBroadcast('start', bcast);
+      // 이 재생이 아직 «지금 나가는 것» 인가 — 중간에 끊겼으면 뒷정리를 건너뛴다
+      var mine = function () { return self.gen === gen; };
       var r = Voices.resolve(bcast, center);
       var chunks = null, results = [];
       return Cache.prepare(bcast, center)
@@ -722,16 +734,18 @@
           return seq;
         })
         .then(function () {
+          if (!mine()) return { ok: false, why: 'stopped', stopped: true };
           self.busy = false; self.current = null;
           if (self.onState) self.onState(null);
-          emitBroadcast('end', bcast);
+          if (self.emitted) { self.emitted = false; emitBroadcast('end', bcast); }
           var bad = results.filter(function (w) { return w && w.indexOf('error') === 0; });
           return { ok: bad.length === 0, chunks: chunks.length, results: results, demo: !!self.usedDemoAudio, voice: r.voice ? r.voice.name : '(없음)' };
         })
         .catch(function (e) {
+          if (!mine()) return { ok: false, why: 'stopped', stopped: true };
           self.busy = false; self.current = null;
           if (self.onState) self.onState(null);
-          emitBroadcast('end', bcast);
+          if (self.emitted) { self.emitted = false; emitBroadcast('end', bcast); }
           return { ok: false, why: String(e) };
         });
     },
@@ -743,6 +757,8 @@
       try { speechSynthesis.cancel(); } catch (e) { }
       var chunks = splitScript(text);
       if (!chunks.length) return Promise.resolve({ ok: false, why: 'empty' });
+      this.gen++; var gen = this.gen;
+      var mine = function () { return self.gen === gen; };
       this.busy = true;
       this.stopped = false;
       this.lastVoiceError = '';
@@ -756,6 +772,7 @@
         });
       });
       return seq.then(function () {
+        if (!mine()) return { ok: false, why: 'stopped', stopped: true };
         self.busy = false;
         if (self.onState) self.onState(null);
         var note = self.lastVoiceError || (Engine.mode !== 'clova' ? '데모 음성 — 실서비스에선 서버에서 합성됩니다.' : '');
@@ -833,6 +850,17 @@
       if (a.length > 300) a = a.slice(0, 300);
       try { localStorage.setItem(LS_LOG, JSON.stringify(a)); } catch (e) { }
       return a;
+    },
+    // 시작할 때 남긴 이력의 결과를 나중에 고쳐 쓴다 (중간에 끊긴 송출을 구분하려고)
+    setStatus: function (ts, status) {
+      var a = this.all(), i;
+      for (i = 0; i < a.length; i++) {
+        if (a[i].ts !== ts) continue;
+        a[i].status = status;
+        try { localStorage.setItem(LS_LOG, JSON.stringify(a)); } catch (e) { }
+        return true;
+      }
+      return false;
     },
     today: function (centerId) {
       var t = ymd(new Date());

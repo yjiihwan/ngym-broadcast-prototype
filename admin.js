@@ -137,6 +137,7 @@
         '</div></article>';
     }).join('');
     applyClamp();
+    paintPlayBtns();   // 목록을 다시 그리면 «■ 멈추기» 글자가 날아가므로 곧바로 되살린다
   }
   // 문구는 기본이 «전문 노출». 8줄을 실제로 넘길 때만 접고 «더보기»를 띄운다.
   // 폭에 따라 줄 수가 달라지므로 글자 수가 아니라 실측 높이로 판단한다.
@@ -172,12 +173,45 @@
     var d = new Date();
     L.add({ ts: d.getTime(), day: NB.ymd(d), time: NB.hhmm(d), centerId: b.centerId, bid: b.id, name: b.name, status: status });
     renderLog();
+    return d.getTime();   // 중간에 끊기면 이 줄의 결과를 고쳐 쓴다
   }
+
+  /* 재생 중인 버튼은 목소리 카드와 똑같이 «■ 멈추기» 채움 상태가 된다.
+   * 어디서 재생을 시작하든 NB.Playback 이 앞엣것을 끊고 여기로 다시 그리라고 알려준다. */
+  function setLive(btn, on, label) {
+    if (!btn) return;
+    btn.textContent = on ? '■ 멈추기' : label;
+    btn.classList.toggle('is-live', on);
+    btn.setAttribute('aria-pressed', String(on));
+  }
+  function paintPlayBtns() {
+    var k = NB.Playback.key();
+    [].forEach.call(document.querySelectorAll('#list [data-id]'), function (card) {
+      var id = card.dataset.id;
+      setLive(card.querySelector('[data-testid=card-preview]'), k === 'preview:' + id, '▶ 미리듣기');
+      setLive(card.querySelector('[data-testid=card-now]'), k === 'now:' + id, '즉시 송출');
+    });
+    setLive($('edPreview'), k === 'edprev', '▶ 미리듣기');
+  }
+  NB.Playback.sub(paintPlayBtns);
+
   function playNow(b) {
-    P.arm();
+    var key = 'now:' + b.id;
+    if (NB.Playback.isOn(key)) { NB.Playback.stop(); return; }
+    P.arm();                                  // 자동재생 차단 해제 — 반드시 클릭 안에서
+    var ts = logPlay(b, '즉시 송출');           // 나간 시각이 기록되어야 하므로 시작할 때 남긴다
+    var cut = false;
+    NB.Playback.begin(key, function () {
+      cut = true;
+      P.stop();
+      L.setStatus(ts, '즉시 송출 · 중간 중단');
+      renderLog();
+      toast('«' + b.name + '» 송출을 중간에 멈췄습니다.');
+    });
     toast('«' + b.name + '» 송출 중…');
-    logPlay(b, '즉시 송출');   // 나간 시각이 기록되어야 하므로 시작할 때 남긴다
     P.play(b, S.center(), { force: true }).then(function (r) {
+      if (cut) return;                        // 중간에 끊긴 것은 «실패» 가 아니다
+      NB.Playback.end(key);
       if (!r.ok) { logPlay(b, '실패'); toast('소리를 낼 수 없습니다. 이 기기에 한국어 목소리가 없을 수 있습니다.'); }
       else toast('송출 완료');
     });
@@ -230,6 +264,7 @@
     document.body.style.overflow = '';
     editing = null;
     NB.VoicePicker.stopAll();
+    if (NB.Playback.isOn('edprev')) NB.Playback.stop();
     try { speechSynthesis.cancel(); } catch (e) { }
   }
   function updLen() {
@@ -272,11 +307,19 @@
     else if (act === 'del') { if (confirm('«' + b.name + '» 방송을 삭제할까요?')) { S.remove(b.id); renderList(); toast('삭제했습니다.'); } }
     else if (act === 'now') playNow(b);
     else if (act === 'preview') {
+      var pkey = 'preview:' + b.id;
+      if (NB.Playback.isOn(pkey)) { NB.Playback.stop(); return; }
       P.arm();
       var r = V.resolve(b, S.center());
       if (!r.voice) return toast('이 기기에 한국어 목소리가 없습니다.');
+      var pcut = false;
+      NB.Playback.begin(pkey, function () { pcut = true; P.stop(); });
       toast('미리듣기 중…');
-      P.preview(b.script, r.voice, r.rate, r.pitch).then(function (x) { if (x && x.note) toast(x.note); });
+      P.preview(b.script, r.voice, r.rate, r.pitch).then(function (x) {
+        if (pcut) return;
+        NB.Playback.end(pkey);
+        if (x && x.note) toast(x.note);
+      });
     }
   });
 
@@ -299,16 +342,25 @@
     editing.schedule.times = editing.schedule.times.filter(function (x) { return x !== b.dataset.t; });
     renderTimes();
   });
+  var ED_HINT = '저장하기 전에 지금 이 대본을 그대로 읽어드립니다.';
   $('edPreview').addEventListener('click', function () {
+    if (NB.Playback.isOn('edprev')) { NB.Playback.stop(); return; }
     P.arm();
     var txt = $('edScript').value.trim();
     if (!txt) return toast('대본을 먼저 입력하세요.');
     var r = editorVoice();
     if (!r.voice) return toast('이 기기에 한국어 목소리가 없습니다.');
     var sp = NB.speakerById(r.speaker);
+    var cut = false;
+    NB.Playback.begin('edprev', function () {
+      cut = true; P.stop();
+      $('edPrevHint').textContent = ED_HINT;
+    });
     $('edPrevHint').textContent = '지금 «' + (sp ? sp.name : '') + '» 목소리로 읽는 중입니다.';
     P.preview(txt, r.voice, r.rate, r.pitch).then(function (x) {
-      $('edPrevHint').textContent = (x && x.note) ? x.note : '저장하기 전에 지금 이 대본을 그대로 읽어드립니다.';
+      if (cut) return;
+      NB.Playback.end('edprev');
+      $('edPrevHint').textContent = (x && x.note) ? x.note : ED_HINT;
     });
   });
   $('edSave').addEventListener('click', function () {

@@ -133,15 +133,40 @@
     L.add({ ts: d.getTime(), day: NB.ymd(d), time: NB.hhmm(d), centerId: b.centerId, bid: b.id, name: b.name, status: status });
     renderLog();
     window.__fired = (window.__fired || []).concat([{ name: b.name, status: status, at: d.getTime() }]);
+    return d.getTime();   // 중간에 끊기면 이 줄의 결과를 고쳐 쓴다
   }
+
+  /* 나가는 중인 회차를 공용 재생 관리자에 걸어 둔다.
+   * 배너의 «■ 멈추기» 든, 다른 재생이 시작돼 밀려난 것이든 끝까지 못 나간 것은 이력에 그렇게 남는다. */
+  function bindStop(key, ts, base) {
+    NB.Playback.begin(key, function () {
+      P.stop();
+      L.setStatus(ts, base + ' · 중간 중단');
+      renderLog();
+    });
+    return key;
+  }
+  function paintPlayBtns() {
+    var on = NB.Playback.key().indexOf('onair:test:') === 0;
+    var t = $('testBtn');
+    t.textContent = on ? '■ 멈추기' : '시험 송출';
+    t.classList.toggle('is-live', on);
+    t.setAttribute('aria-pressed', String(on));
+  }
+  NB.Playback.sub(paintPlayBtns);
 
   // 다른 방송이 나가는 중이면 끝날 때까지 기다렸다가 이어서 내보낸다 (겹쳐서 버리지 않는다)
   function fire(b, planned, lateMs, waited) {
     waited = waited || 0;
     if (P.busy && waited < 60000) { return setTimeout(function () { fire(b, planned, lateMs, waited + 1000); }, 1000); }
-    record(b, (lateMs > 5000 || waited > 5000) ? '자동 송출(지연)' : '자동 송출');
+    var base = (lateMs > 5000 || waited > 5000) ? '자동 송출(지연)' : '자동 송출';
+    var ts = record(b, base);
+    var key = bindStop('onair:auto:' + ts, ts, base);
     P.play(b, S.center(), { force: true }).then(function (r) {
-      if (!r.ok) record(b, '실패');
+      if (NB.Playback.isOn(key)) {           // 중간에 끊겼으면 «실패» 가 아니다
+        NB.Playback.end(key);
+        if (!r.ok) record(b, '실패');
+      }
       renderNext(); renderPlan();
     });
   }
@@ -160,7 +185,11 @@
     // 소리가 실제로 열렸는지 형이 바로 알 수 있게 짧은 확인 음성
     var v = V.resolve({ voice: {} }, S.center());
     P.chime().then(function () {
-      if (v.voice) return P.preview('엔짐 자동방송을 시작합니다.', v.voice, v.rate, v.pitch);
+      if (!v.voice) return;
+      var key = 'onair:hello';
+      NB.Playback.begin(key, function () { P.stop(); });
+      return P.preview('엔짐 자동방송을 시작합니다.', v.voice, v.rate, v.pitch)
+        .then(function () { NB.Playback.end(key); });
     });
   }
 
@@ -171,13 +200,27 @@
   });
 
   $('testBtn').addEventListener('click', function () {
+    if (NB.Playback.key().indexOf('onair:test:') === 0) { NB.Playback.stop(); return; }
     P.arm();
     var list = myBroadcasts().filter(function (b) { return b.enabled; });
     var b = list[0] || myBroadcasts()[0];
     if (!b) return;
-    record(b, '시험 송출');
-    P.play(b, S.center(), { force: true }).then(function (r) { if (!r.ok) record(b, '실패'); });
+    var ts = record(b, '시험 송출');
+    var key = bindStop('onair:test:' + ts, ts, '시험 송출');
+    P.play(b, S.center(), { force: true }).then(function (r) {
+      if (!NB.Playback.isOn(key)) return;
+      NB.Playback.end(key);
+      if (!r.ok) record(b, '실패');
+    });
   });
+
+  // 배너의 «■ 멈추기» — 미리듣기든 즉시·시험·예약 송출이든 지금 울리는 것을 끊는다
+  $('liveStop').addEventListener('click', function () {
+    if (!NB.Playback.stop()) P.stop();
+  });
+
+  // 관리 화면(다른 탭)에서 송출하거나 중간에 멈추면 이 화면 이력도 다시 읽는다
+  window.addEventListener('storage', function () { renderLog(); });
 
   $('test1mBtn').addEventListener('click', function () {
     P.arm();

@@ -12,10 +12,16 @@
   var owner = null;        // 그 소리를 튼 피커
   var mounted = [];
 
-  function stopAll() {
+  function resetLocal() {
     try { audio.pause(); audio.currentTime = 0; } catch (e) { }
     playing = ''; owner = null;
     repaintAll();
+  }
+  /* 단일 재생 관리는 NB.Playback 으로 옮겼다 (방송 미리듣기·즉시 송출과도 겹치지 않게).
+   * 여기서 울리는 중일 때만 관리자에게 넘긴다 — 남의 소리를 끄면 안 된다. */
+  function stopAll() {
+    if (playing && NB.Playback) { NB.Playback.stop(); return; }
+    resetLocal();
   }
   function repaintAll() { mounted.forEach(function (p) { try { p.paint(); } catch (e) { } }); }
   audio.addEventListener('ended', stopAll);
@@ -119,6 +125,7 @@
         stopAll();
         audio.src = 'voice-samples/' + id + '_' + scriptNo + '.mp3';
         playing = id; owner = api;
+        if (NB.Playback) NB.Playback.begin('sample:' + id, resetLocal);
         repaintAll();
         audio.play().catch(stopAll);
         return;
