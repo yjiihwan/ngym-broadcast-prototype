@@ -5,6 +5,7 @@
   var LS = 'ngym_bcast_v1';
   var LS_FIRED = 'ngym_bcast_fired_v1';
   var LS_LOG = 'ngym_bcast_log_v1';
+  var LS_ONBOARD = 'ngym_bcast_onboarded_v1';
   var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
   /* ---------------- 유틸 ---------------- */
@@ -923,6 +924,6 @@
     humanGap: humanGap, isPastOnce: isPastOnce,
     SPEAKERS: SPEAKERS, DEFAULT_SPEAKER: DEFAULT_SPEAKER, speakerById: speakerById, speakerLine: speakerLine,
     centerSpeaker: centerSpeaker,
-    KEYS: { state: LS, log: LS_LOG, fired: LS_FIRED }
+    KEYS: { state: LS, log: LS_LOG, fired: LS_FIRED, onboarded: LS_ONBOARD }
   };
 })(window);

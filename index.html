@@ -17,6 +17,7 @@
     </div>
     <div class="topbar-sp"></div>
     <select class="inp" id="centerSel" data-testid="center-select" style="width:auto;min-width:150px"></select>
+    <button class="btn btn-sm btn-ghost" id="helpBtn" data-testid="nav-help" aria-label="사용법 도움말 다시 보기">? 도움말</button>
     <a class="btn btn-sm" href="download.html" data-testid="nav-download">PC 앱</a>
     <a class="btn btn-cta" href="onair.html" target="_blank" rel="noopener" data-testid="open-onair">송출 화면 열기</a>
   </div>
@@ -66,6 +67,57 @@
     <button class="btn btn-sm btn-ghost" id="resetBtn" style="margin-left:8px">샘플 데이터로 되돌리기</button>
   </p>
 </main>
+
+<!-- 최초 진입 사용설명 — 한 화면에 4단계를 나열한다(짧아서 넘길 이유가 없다).
+     다시 보기는 상단 «? 도움말». 자동 노출 여부는 NB.KEYS.onboarded 한 곳이 정한다. -->
+<div class="mask hide" id="obMask" data-testid="onboard-modal">
+  <div class="modal ob" role="dialog" aria-modal="true" aria-labelledby="obTitle">
+    <div class="modal-h">
+      <h2 id="obTitle">처음이신가요? 이렇게 쓰시면 됩니다</h2>
+      <div class="sp"></div>
+      <button class="x" id="obClose" data-testid="onboard-close" aria-label="닫기">✕</button>
+    </div>
+
+    <ol class="ob-steps" data-testid="onboard-steps">
+      <li class="ob-step" data-testid="onboard-step-1">
+        <span class="ob-no">1</span>
+        <div class="ob-body">
+          <h3>목소리를 고릅니다</h3>
+          <p>네 목소리를 들어보고 센터 기본 목소리를 정합니다. 방송마다 다른 목소리로 바꿀 수도 있습니다.</p>
+        </div>
+      </li>
+      <li class="ob-step" data-testid="onboard-step-2">
+        <span class="ob-no">2</span>
+        <div class="ob-body">
+          <h3>방송을 만듭니다</h3>
+          <p>«+ 새 방송»에서 읽을 내용을 적고, 반복할 요일과 시각을 정합니다.</p>
+        </div>
+      </li>
+      <li class="ob-step ob-step-warn" data-testid="onboard-step-3">
+        <span class="ob-no">3</span>
+        <div class="ob-body">
+          <h3>송출 화면을 띄워 둡니다 <b>— 가장 중요합니다</b></h3>
+          <p>스피커가 연결된 태블릿이나 PC에서 «송출 화면 열기»를 눌러 그 창을 계속 켜 두셔야 예약한 시각에 방송이 나갑니다.
+             <b>창을 닫거나 기기 화면이 꺼지면 방송이 나가지 않습니다.</b> 기기의 화면 자동 잠금도 꺼 주세요.</p>
+        </div>
+      </li>
+      <li class="ob-step" data-testid="onboard-step-4">
+        <span class="ob-no">4</span>
+        <div class="ob-body">
+          <h3>(선택) PC 앱을 깝니다</h3>
+          <p>방송이 나갈 때 틀어둔 배경음악을 자동으로 멈추고 싶으면 «PC 앱»에서 내려받아 설치합니다. 필요 없으면 건너뛰어도 됩니다.</p>
+        </div>
+      </li>
+    </ol>
+
+    <p class="hintline" data-testid="onboard-tip">방송이 나가는 중에는 어디서든 «■ 멈추기»를 눌러 소리를 바로 끊을 수 있습니다.</p>
+
+    <div class="modal-f">
+      <div class="sp"></div>
+      <button class="btn btn-cta" id="obStart" data-testid="onboard-start">바로 시작하기</button>
+    </div>
+  </div>
+</div>
 
 <!-- 방송 편집 -->
 <div class="mask hide" id="mask" data-testid="editor-mask">
@@ -145,6 +197,7 @@
 <script src="playback.js"></script>
 <script src="voice-picker.js"></script>
 <script src="admin.js"></script>
+<script src="onboard.js"></script>
 <script src="voice-samples/samples.js"></script>
 <script src="voice-samples/preview.js"></script>
 </body>

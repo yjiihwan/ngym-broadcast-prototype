@@ -347,3 +347,19 @@ input[type=range].inp::-moz-range-thumb{width:26px;height:26px;border:2px solid 
   .dl-grid{grid-template-columns:1fr}
   .dl-card{padding:15px}
 }
+
+/* ---------- 최초 진입 사용설명(온보딩) ---------- */
+.ob-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.ob-step{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:var(--r);background:var(--surface-sunken)}
+.ob-no{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--surface);color:var(--text);
+  border:1px solid var(--border-strong);font-size:13px;font-weight:700;line-height:24px;text-align:center;font-variant-numeric:tabular-nums}
+.ob-body{flex:1 1 auto;min-width:0}
+.ob-body h3{font-size:15px;margin:0 0 4px;line-height:1.45;word-break:keep-all;overflow-wrap:break-word}
+.ob-body p{font-size:13.5px;color:var(--text-muted);margin:0;line-height:1.6;word-break:keep-all;overflow-wrap:break-word}
+/* 3단계는 경고 면을 쓰되 글자는 --text 로 둔다 — --warning 글자는 경고 배경 위 4.33:1 이라 본문에 못 쓴다 */
+.ob-step-warn{background:var(--warning-surface)}
+.ob-step-warn .ob-no{background:var(--warning);border-color:var(--warning);color:var(--text-on-brand)}
+.ob-step-warn .ob-body h3,.ob-step-warn .ob-body p,.ob-step-warn .ob-body b{color:var(--text)}
+/* 송출 게이트 경고 — 가운데 정렬 안에서 폭을 잡아준다. 글자는 --text (경고 배경 위 대비) */
+.gate-keep{max-width:460px;text-align:left;color:var(--text)}
+.gate-keep b{color:var(--text)}
